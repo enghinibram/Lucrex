@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Feed</title>
+  <meta name="theme-color" content="#1a5fb4" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #1a5fb4;
+      --blue-light: #eef3fc;
+      --blue-dark: #154c91;
+      --red: #df2e38;
+      --red-light: #fdf0ef;
+      --green: #27ae60;
+      --text: #111;
+      --text-muted: #666;
+      --text-hint: #aaa;
+      --bg: #f0f2f5;
+      --bg-card: #fff;
+      --bg-input: #f4f4f4;
+      --border: #e4e4e4;
+      --radius: 14px;
+      --header-h: 56px;
+      --navbar-h: 60px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0;
+        --text-muted: #999;
+        --text-hint: #555;
+        --bg: #0a0a0a;
+        --bg-card: #1a1a1a;
+        --bg-input: #222;
+        --border: #2a2a2a;
+        --blue-light: #0c2a52;
+        --red-light: #2a0a0c;
+      }
+    }
+
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overscroll-behavior: none;
+    }
+
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .header {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      height: var(--header-h);
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+
+    .logo {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--blue);
+      letter-spacing: -0.5px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-input);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      position: relative;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .icon-btn:active { opacity: 0.7; }
+
+    .notif-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      width: 8px;
+      height: 8px;
+      background: var(--red);
+      border-radius: 50%;
+      border: 1.5px solid var(--bg-card);
+    }
+
+    .scroll-area {
+      margin-top: var(--header-h);
+      margin-bottom: var(--navbar-h);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+    }
+
+    .cats-wrap {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+
+    .cats-wrap::-webkit-scrollbar { display: none; }
+
+    .cat-pill {
+      white-space: nowrap;
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      background: var(--bg-card);
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+    }
+
+    .cat-pill.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #fff;
+    }
+
+    .stories-wrap {
+      display: flex;
+      gap: 12px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .stories-wrap::-webkit-scrollbar { display: none; }
+
+    .story {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .story-avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      border: 2.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .story.active .story-avatar { border-color: var(--blue); }
+
+    .story-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .story-name {
+      font-size: 11px;
+      color: var(--text-muted);
+      max-width: 58px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .story.active .story-name { color: var(--blue); font-weight: 600; }
+
+    .story-add .story-avatar {
+      border: 2px dashed var(--border);
+      font-size: 24px;
+      color: var(--text-hint);
+    }
+
+    .feed {
+      padding: 12px 12px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px 8px;
+    }
+
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    .card-meta { flex: 1; min-width: 0; }
+
+    .card-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-sub {
+      font-size: 12px;
+      color: var(--text-hint);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .card-badge {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .badge-work { background: var(--blue-light); color: var(--blue); }
+    .badge-job { background: #fef9ec; color: #d68910; }
+    .badge-sos { background: var(--red-light); color: var(--red); }
+    .badge-avail { background: #eafaf1; color: var(--green); }
+
+    .card-more {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-hint);
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+    }
+
+    .card-body {
+      padding: 0 14px 10px;
+      font-size: 14px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .card-image {
+      width: 100%;
+      aspect-ratio: 16/9;
+      object-fit: cover;
+      background: var(--bg-input);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      color: var(--text-hint);
+    }
+
+    .card.job-card .card-body { padding: 10px 14px; }
+
+    .job-details {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .job-tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: var(--bg-input);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .bid-count {
+      font-size: 13px;
+      color: var(--blue);
+      font-weight: 600;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+
+    .card-actions {
+      display: flex;
+      align-items: center;
+      padding: 4px 10px 10px;
+      gap: 4px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .action-btn:hover { background: var(--bg-input); }
+    .action-btn.liked { color: var(--red); }
+    .action-btn span { font-size: 16px; }
+
+    .action-spacer { flex: 1; }
+
+    .offer-btn {
+      padding: 8px 16px;
+      background: var(--blue);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .offer-btn:active { opacity: 0.85; }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-input) 25%, var(--border) 50%, var(--bg-input) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 8px;
+    }
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .sk-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .sk-row { display: flex; align-items: center; gap: 10px; }
+    .sk-circle { width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0; }
+    .sk-line { height: 12px; border-radius: 6px; flex: 1; }
+    .sk-line.short { flex: 0 0 40%; }
+    .sk-rect { height: 160px; border-radius: 10px; }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+    .empty-title { font-size: 17px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .empty-sub { font-size: 14px; line-height: 1.6; }
+
+    .sos-btn {
+      position: fixed;
+      bottom: calc(var(--navbar-h) + 16px);
+      right: 50%;
+      transform: translateX(calc(50% + 140px));
+      width: 58px;
+      height: 58px;
+      border-radius: 50%;
+      background: var(--red);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(223, 46, 56, 0.45);
+      z-index: 200;
+      font-size: 24px;
+      -webkit-tap-highlight-color: transparent;
+      animation: pulse-ring 2.5s ease-out infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(223, 46, 56, 0.4), 0 4px 16px rgba(223, 46, 56, 0.45); }
+      70% { box-shadow: 0 0 0 12px rgba(223, 46, 56, 0), 0 4px 16px rgba(223, 46, 56, 0.45); }
+      100% { box-shadow: 0 0 0 0 rgba(223, 46, 56, 0), 0 4px 16px rgba(223, 46, 56, 0.45); }
+    }
+
+    .sos-btn:active { transform: translateX(calc(50% + 140px)) scale(0.93); }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px);
+      z-index: 300;
+      display: flex;
+      align-items: flex-end;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: 20px 20px 0 0;
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 20px 36px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--red);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .sos-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .sos-option {
+      background: var(--bg-input);
+      border: 2px solid transparent;
+      border-radius: 12px;
+      padding: 16px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .sos-option:hover { border-color: var(--red); }
+    .sos-option.selected { border-color: var(--red); background: var(--red-light); }
+
+    .sos-option-icon { font-size: 28px; margin-bottom: 6px; }
+    .sos-option-label { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sos-option.selected .sos-option-label { color: var(--red); }
+
+    .sos-desc {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1.5px solid transparent;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: var(--text);
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      margin-bottom: 14px;
+      min-height: 70px;
+    }
+
+    .sos-desc:focus { border-color: var(--red); background: var(--bg); }
+    .sos-desc::placeholder { color: var(--text-hint); }
+
+    .sos-send-btn {
+      width: 100%;
+      padding: 14px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .sos-send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .sos-send-btn:active { opacity: 0.85; }
+
+    .navbar {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      height: var(--navbar-h);
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      z-index: 100;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 8px 16px;
+      cursor: pointer;
+      border: none;
+      background: none;
+      -webkit-tap-highlight-color: transparent;
+      text-decoration: none;
+    }
+
+    .nav-icon { font-size: 22px; line-height: 1; }
+    .nav-label { font-size: 10px; color: var(--text-hint); font-weight: 500; }
+    .nav-item.active .nav-label { color: var(--blue); }
+
+    .nav-post {
+      width: 46px;
+      height: 46px;
+      background: var(--blue);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(26, 95, 180, 0.35);
+      cursor: pointer;
+      border: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .nav-post:active { transform: scale(0.94); }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="header">
+    <div class="logo">Lucrex</div>
+    <div class="header-right">
+      <button class="icon-btn" title="Căutare" onclick="alert('Căutare — în curând!')">🔍</button>
+      <button class="icon-btn" title="Notificări" onclick="window.location.href='notifications.html'">
+        🔔
+        <div class="notif-badge" id="notifBadge" style="display:none"></div>
+      </button>
+      <button class="icon-btn" title="Profil" onclick="window.location.href='profile.html'">
+        <span id="headerAvatar">👤</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="scroll-area" id="scrollArea">
+
+    <div class="cats-wrap" id="catsWrap">
+      <div class="cat-pill active" data-cat="all" onclick="filterFeed(this)">🏠 Toate</div>
+      <div class="cat-pill" data-cat="Instalator" onclick="filterFeed(this)">🚰 Instalator</div>
+      <div class="cat-pill" data-cat="Electrician" onclick="filterFeed(this)">⚡ Electrician</div>
+      <div class="cat-pill" data-cat="Zugrav" onclick="filterFeed(this)">🖌️ Zugrav</div>
+      <div class="cat-pill" data-cat="Lăcătuș" onclick="filterFeed(this)">🔑 Lăcătuș</div>
+      <div class="cat-pill" data-cat="Tâmplar" onclick="filterFeed(this)">🪵 Tâmplar</div>
+      <div class="cat-pill" data-cat="Faianțar" onclick="filterFeed(this)">🧱 Faianțar</div>
+      <div class="cat-pill" data-cat="Altele" onclick="filterFeed(this)">➕ Altele</div>
+    </div>
+
+    <div class="stories-wrap" id="storiesWrap">
+      <div class="story story-add" onclick="alert('Adaugă story — în curând!')">
+        <div class="story-avatar">➕</div>
+        <div class="story-name">Tu</div>
+      </div>
+    </div>
+
+    <div class="feed" id="feed">
+      <div class="sk-card" id="sk1">
+        <div class="sk-row">
+          <div class="skeleton sk-circle"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line short"></div>
+          </div>
+        </div>
+        <div class="skeleton sk-rect"></div>
+        <div class="skeleton sk-line"></div>
+      </div>
+      <div class="sk-card" id="sk2">
+        <div class="sk-row">
+          <div class="skeleton sk-circle"></div>
+          <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+            <div class="skeleton sk-line"></div>
+            <div class="skeleton sk-line short"></div>
+          </div>
+        </div>
+        <div class="skeleton sk-line"></div>
+        <div class="skeleton sk-line short"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="sos-btn" onclick="openSOS()" title="Urgență!">🆘</button>
+
+  <nav class="navbar">
+    <button class="nav-item active">
+      <span class="nav-icon">🏠</span>
+      <span class="nav-label">Feed</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='map.html'">
+      <span class="nav-icon">🗺️</span>
+      <span class="nav-label">Hartă</span>
+    </button>
+    <button class="nav-post" onclick="window.location.href='post.html'" title="Postează">＋</button>
+    <button class="nav-item" onclick="window.location.href='messages.html'">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Mesaje</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='profile.html'">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Profil</span>
+    </button>
+  </nav>
+
+</div>
+
+<!-- SOS MODAL -->
+<div class="modal-overlay" id="sosOverlay" onclick="closeSOS(event)">
+  <div class="modal" id="sosModal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🆘 Urgență!</div>
+    <p class="modal-sub">Selectează tipul problemei. Meseriașii din zona ta primesc alertă instant.</p>
+
+    <div class="sos-grid">
+      <div class="sos-option" data-sos="Instalator" onclick="selectSOS(this)">
+        <div class="sos-option-icon">🚰</div>
+        <div class="sos-option-label">Instalator</div>
+      </div>
+      <div class="sos-option" data-sos="Electrician" onclick="selectSOS(this)">
+        <div class="sos-option-icon">⚡</div>
+        <div class="sos-option-label">Electrician</div>
+      </div>
+      <div class="sos-option" data-sos="Lăcătuș" onclick="selectSOS(this)">
+        <div class="sos-option-icon">🔑</div>
+        <div class="sos-option-label">Lăcătuș</div>
+      </div>
+      <div class="sos-option" data-sos="Altele" onclick="selectSOS(this)">
+        <div class="sos-option-icon">🔧</div>
+        <div class="sos-option-label">Altele</div>
+      </div>
+    </div>
+
+    <textarea class="sos-desc" id="sosDesc" placeholder="Descrie pe scurt problema (opțional)..." maxlength="200"></textarea>
+
+    <button class="sos-send-btn" id="sosSendBtn" onclick="sendSOS()" disabled>
+      🚨 Trimite alerta acum
+    </button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+
+  const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+  let currentFilter = 'all'
+  let selectedSOSCat = null
+  let allPosts = []
+
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await sbClient.auth.getSession()
+    if (!session) { window.location.href = 'login.html'; return; }
+
+    currentUser = session.user
+
+    const { data: profile } = await sbClient
+      .from('users')
+      .select('full_name, role, neighborhood')
+      .eq('id', currentUser.id)
+      .single()
+
+    if (profile?.full_name) {
+      document.getElementById('headerAvatar').textContent =
+        profile.full_name.charAt(0).toUpperCase()
+    }
+
+    await loadFeed()
+
+    sbClient
+      .channel('sos-feed')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'sos_alerts'
+      }, (payload) => {
+        showSOSNotification(payload.new)
+      })
+      .subscribe()
+  })
+
+  async function loadFeed() {
+    try {
+      const { data: posts, error } = await sbClient
+        .from('feed_posts')
+        .select(`
+          *,
+          author:users(id, full_name, role, neighborhood)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(20)
+
+      const { data: jobs } = await sbClient
+        .from('job_requests')
+        .select(`
+          *,
+          client:users(id, full_name, neighborhood)
+        `)
+        .eq('status', 'open')
+        .order('created_at', { ascending: false })
+        .limit(10)
+
+      allPosts = [
+        ...(posts || []).map(p => ({ ...p, _type: 'post' })),
+        ...(jobs || []).map(j => ({ ...j, _type: 'job' }))
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+      renderFeed(allPosts)
+
+    } catch (err) {
+      console.error('Feed error:', err)
+      renderEmpty()
+    }
+  }
+
+  function renderFeed(items) {
+    const feed = document.getElementById('feed')
+
+    document.getElementById('sk1')?.remove()
+    document.getElementById('sk2')?.remove()
+
+    if (!items || items.length === 0) {
+      renderEmpty()
+      return
+    }
+
+    feed.innerHTML = ''
+    items.forEach(item => {
+      const el = item._type === 'job' ? renderJobCard(item) : renderPostCard(item)
+      if (el) feed.appendChild(el)
+    })
+  }
+
+  function renderPostCard(post) {
+    const div = document.createElement('div')
+    div.className = 'card'
+
+    const typeLabel = {
+      work_done: { label: 'Lucrare finalizată', badge: 'badge-work' },
+      question: { label: 'Întrebare', badge: 'badge-job' },
+      availability: { label: 'Disponibil', badge: 'badge-avail' }
+    }[post.type] || { label: post.type, badge: 'badge-work' }
+
+    const name = post.author?.full_name || 'Utilizator'
+    const zone = post.neighborhood || post.author?.neighborhood || ''
+    const time = timeAgo(post.created_at)
+
+    div.innerHTML = `
+      <div class="card-header">
+        <div class="avatar">${name.charAt(0).toUpperCase()}</div>
+        <div class="card-meta">
+          <div class="card-name">${escHtml(name)}</div>
+          <div class="card-sub">
+            <span class="card-badge ${typeLabel.badge}">${typeLabel.label}</span>
+            ${zone ? `· 📍 ${escHtml(zone)}` : ''} · ${time}
+          </div>
+        </div>
+        <button class="card-more">···</button>
+      </div>
+      ${post.body ? `<div class="card-body">${escHtml(post.body)}</div>` : ''}
+      ${post.media_urls?.length ? `
+        <div class="card-image" style="background:var(--bg-input)">
+          <img src="${post.media_urls[0]}" alt="Imagine lucrare"
+            style="width:100%;height:200px;object-fit:cover"
+            onerror="this.parentElement.innerHTML='📷'" />
+        </div>` : ''}
+      <div class="card-actions">
+        <button class="action-btn" onclick="toggleLike(this, '${post.id}')">
+          <span>🤍</span> <span class="like-count">${post.likes_count || 0}</span>
+        </button>
+        <button class="action-btn">
+          <span>💬</span> Comentariu
+        </button>
+        <div class="action-spacer"></div>
+        <button class="action-btn">
+          <span>↗️</span>
+        </button>
+      </div>
+    `
+    return div
+  }
+
+  function renderJobCard(job) {
+    const div = document.createElement('div')
+    div.className = 'card job-card'
+
+    const name = job.client?.full_name || 'Client'
+    const zone = job.neighborhood || job.client?.neighborhood || ''
+    const time = timeAgo(job.created_at)
+    const budget = job.budget_min && job.budget_max
+      ? `${job.budget_min}–${job.budget_max} lei`
+      : job.budget_max ? `până la ${job.budget_max} lei` : 'Buget negociabil'
+
+    div.innerHTML = `
+      <div class="card-header">
+        <div class="avatar">${name.charAt(0).toUpperCase()}</div>
+        <div class="card-meta">
+          <div class="card-name">${escHtml(name)}</div>
+          <div class="card-sub">
+            <span class="card-badge badge-job">Caut meseriaș</span>
+            ${zone ? `· 📍 ${escHtml(zone)}` : ''} · ${time}
+          </div>
+        </div>
+        <button class="card-more">···</button>
+      </div>
+      <div class="card-body">
+        <strong>${escHtml(job.title)}</strong>
+        ${job.description ? `<br><span style="color:var(--text-muted);font-size:13px">${escHtml(job.description)}</span>` : ''}
+        <div class="job-details">
+          <div class="job-tag">🔧 ${escHtml(job.category)}</div>
+          <div class="job-tag">💰 ${budget}</div>
+          ${job.is_urgent ? '<div class="job-tag" style="color:var(--red);background:var(--red-light)">🚨 Urgent</div>' : ''}
+        </div>
+        <div class="bid-count" onclick="alert('Vezi oferte — în curând!')">
+          Vezi oferte →
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="offer-btn" onclick="openBidModal('${job.id}')">
+          Trimite ofertă
+        </button>
+        <div class="action-spacer"></div>
+        <button class="action-btn">
+          <span>↗️</span>
+        </button>
+      </div>
+    `
+    return div
+  }
+
+  function renderEmpty() {
+    const feed = document.getElementById('feed')
+    feed.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">🏗️</div>
+        <div class="empty-title">Feed-ul e gol momentan</div>
+        <div class="empty-sub">
+          Fii primul care postează o lucrare sau<br>
+          caută un meseriaș în zona ta!
+        </div>
+      </div>
+    `
+  }
+
+  function filterFeed(pill) {
+    document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'))
+    pill.classList.add('active')
+    currentFilter = pill.dataset.cat
+
+    if (currentFilter === 'all') {
+      renderFeed(allPosts)
+    } else {
+      const filtered = allPosts.filter(item => {
+        if (item._type === 'job') return item.category === currentFilter
+        return true
+      })
+      renderFeed(filtered)
+    }
+  }
+
+  async function toggleLike(btn, postId) {
+    const isLiked = btn.classList.contains('liked')
+    const countEl = btn.querySelector('.like-count')
+    let count = parseInt(countEl.textContent) || 0
+
+    if (isLiked) {
+      btn.classList.remove('liked')
+      btn.querySelector('span').textContent = '🤍'
+      count = Math.max(0, count - 1)
+    } else {
+      btn.classList.add('liked')
+      btn.querySelector('span').textContent = '❤️'
+      count++
+    }
+
+    countEl.textContent = count
+
+    await sbClient
+      .from('feed_posts')
+      .update({ likes_count: count })
+      .eq('id', postId)
+  }
+
+  function openSOS() {
+    document.getElementById('sosOverlay').classList.add('open')
+    document.body.style.overflow = 'hidden'
+  }
+
+  function closeSOS(e) {
+    if (e.target === document.getElementById('sosOverlay')) {
+      document.getElementById('sosOverlay').classList.remove('open')
+      document.body.style.overflow = ''
+    }
+  }
+
+  function selectSOS(option) {
+    document.querySelectorAll('.sos-option').forEach(o => o.classList.remove('selected'))
+    option.classList.add('selected')
+    selectedSOSCat = option.dataset.sos
+    document.getElementById('sosSendBtn').disabled = false
+  }
+
+  async function sendSOS() {
+    if (!selectedSOSCat) return
+
+    const desc = document.getElementById('sosDesc').value.trim()
+    const btn = document.getElementById('sosSendBtn')
+    btn.disabled = true
+    btn.textContent = 'Se trimite...'
+
+    try {
+      let lat = null, lng = null
+      try {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 })
+        )
+        lat = pos.coords.latitude
+        lng = pos.coords.longitude
+      } catch {
+        // locația e opțională
+      }
+
+      const { error } = await sbClient
+        .from('sos_alerts')
+        .insert({
+          client_id: currentUser.id,
+          category: selectedSOSCat,
+          description: desc || null,
+          lat,
+          lng,
+          status: 'active'
+        })
+
+      if (error) throw error
+
+      document.getElementById('sosOverlay').classList.remove('open')
+      document.body.style.overflow = ''
+      showToast('🚨 Alerta a fost trimisă! Meseriașii din zonă au fost notificați.')
+
+      selectedSOSCat = null
+      document.querySelectorAll('.sos-option').forEach(o => o.classList.remove('selected'))
+      document.getElementById('sosDesc').value = ''
+      document.getElementById('sosSendBtn').disabled = true
+      document.getElementById('sosSendBtn').textContent = '🚨 Trimite alerta acum'
+
+    } catch (err) {
+      console.error('SOS error:', err)
+      btn.disabled = false
+      btn.textContent = '🚨 Trimite alerta acum'
+      showToast('Eroare la trimiterea alertei. Încearcă din nou.', true)
+    }
+  }
+
+  function showSOSNotification(alert) {
+    showToast(`🚨 URGENȚĂ în zonă: ${alert.category}! Verifică aplicația.`, false, 6000)
+  }
+
+  function openBidModal(jobId) {
+    window.location.href = `bid.html?job=${jobId}`
+  }
+
+  function showToast(msg, isError = false, duration = 3500) {
+    const toast = document.createElement('div')
+    toast.style.cssText = `
+      position:fixed; bottom:calc(var(--navbar-h) + 80px); left:50%;
+      transform:translateX(-50%); background:${isError ? '#c0392b' : '#111'};
+      color:#fff; padding:12px 20px; border-radius:12px; font-size:13px;
+      font-weight:500; z-index:500; max-width:320px; text-align:center;
+      box-shadow:0 4px 16px rgba(0,0,0,0.2); line-height:1.5;
+      animation: fadeInUp 0.3s ease;
+    `
+    toast.textContent = msg
+
+    const style = document.createElement('style')
+    style.textContent = `@keyframes fadeInUp {
+      from { opacity:0; transform:translateX(-50%) translateY(10px); }
+      to   { opacity:1; transform:translateX(-50%) translateY(0); }
+    }`
+    document.head.appendChild(style)
+    document.body.appendChild(toast)
+    setTimeout(() => toast.remove(), duration)
+  }
+
+  function timeAgo(dateStr) {
+    const diff = (Date.now() - new Date(dateStr)) / 1000
+    if (diff < 60) return 'acum'
+    if (diff < 3600) return `${Math.floor(diff / 60)} min`
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+    return `${Math.floor(diff / 86400)}z`
+  }
+
+  function escHtml(str) {
+    if (!str) return ''
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  }
+</script>
+</body>
+</html>

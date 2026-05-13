@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Profil</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --red: #df2e38; --green: #27ae60;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #f0f2f5; --bg-card: #fff; --bg-input: #f4f4f4;
+      --border: #e4e4e4; --radius: 14px;
+      --header-h: 56px; --navbar-h: 60px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #999; --text-hint: #555;
+        --bg: #0a0a0a; --bg-card: #1a1a1a; --bg-input: #222; --border: #2a2a2a;
+        --blue-light: #0c2a52;
+      }
+    }
+    html, body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: var(--navbar-h); }
+    .header {
+      position: sticky; top: 0;
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      height: var(--header-h); display: flex; align-items: center;
+      justify-content: space-between; padding: 0 16px; z-index: 100;
+    }
+    .back-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); padding: 4px; }
+    .header-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .edit-btn { background: none; border: none; font-size: 13px; font-weight: 600; color: var(--blue); cursor: pointer; padding: 6px 10px; }
+    .hero {
+      background: var(--bg-card); padding: 28px 20px 20px;
+      display: flex; flex-direction: column; align-items: center;
+      border-bottom: 1px solid var(--border);
+    }
+    .avatar-wrap { position: relative; margin-bottom: 14px; }
+    .avatar-big {
+      width: 84px; height: 84px; border-radius: 50%;
+      background: var(--blue); display: flex; align-items: center;
+      justify-content: center; font-size: 34px; font-weight: 700; color: #fff; overflow: hidden;
+    }
+    .avatar-big img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-edit {
+      position: absolute; bottom: 0; right: 0;
+      width: 26px; height: 26px; background: var(--blue);
+      border-radius: 50%; border: 2px solid var(--bg-card);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; cursor: pointer;
+    }
+    .user-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .user-meta { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .user-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; background: var(--blue-light); color: var(--blue); }
+    .user-badge.meserias { background: #eafaf1; color: var(--green); }
+    .stats { display: flex; gap: 0; width: 100%; border-top: 1px solid var(--border); margin-top: 4px; }
+    .stat { flex: 1; padding: 14px 8px; text-align: center; border-right: 1px solid var(--border); }
+    .stat:last-child { border-right: none; }
+    .stat-value { font-size: 20px; font-weight: 700; color: var(--blue); }
+    .stat-label { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+    .stars { color: #f39c12; font-size: 14px; margin-bottom: 8px; }
+    .section { background: var(--bg-card); margin-top: 10px; }
+    .section-title { font-size: 12px; font-weight: 700; color: var(--text-hint); padding: 14px 16px 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .section-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; border-bottom: 1px solid var(--border);
+      cursor: pointer; transition: background 0.15s;
+    }
+    .section-row:last-child { border-bottom: none; }
+    .section-row:hover { background: var(--bg-input); }
+    .row-icon { font-size: 20px; width: 28px; text-align: center; }
+    .row-label { flex: 1; font-size: 15px; color: var(--text); }
+    .row-value { font-size: 13px; color: var(--text-hint); }
+    .row-arrow { font-size: 16px; color: var(--text-hint); }
+    .cats-wrap { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 16px 16px; }
+    .cat-pill { padding: 6px 12px; border-radius: 20px; background: var(--blue-light); color: var(--blue); font-size: 12px; font-weight: 600; }
+    .sub-card {
+      margin: 10px 12px; background: var(--blue);
+      border-radius: var(--radius); padding: 16px 18px;
+      color: #fff; display: flex; align-items: center; gap: 14px;
+    }
+    .sub-icon { font-size: 32px; }
+    .sub-info { flex: 1; }
+    .sub-name { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .sub-desc { font-size: 12px; opacity: 0.8; }
+    .sub-btn {
+      background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+      color: #fff; padding: 8px 14px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .logout-btn {
+      width: calc(100% - 24px); margin: 10px 12px 20px;
+      padding: 14px; background: var(--bg-card);
+      border: 1.5px solid var(--border); border-radius: var(--radius);
+      color: var(--red); font-size: 15px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .logout-btn:hover { background: #fdf0ef; }
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px); z-index: 300;
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--bg-card); border-radius: 20px 20px 0 0;
+      width: 100%; max-width: 480px; padding: 20px 20px 36px;
+      transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+    .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .input-wrap {
+      display: flex; align-items: center; background: var(--bg-input);
+      border-radius: var(--radius); border: 1.5px solid transparent;
+      padding: 0 14px; gap: 10px; margin-bottom: 14px;
+    }
+    .input-wrap:focus-within { border-color: var(--blue); background: var(--bg-card); }
+    .input-wrap input {
+      flex: 1; border: none; background: transparent;
+      font-size: 15px; color: var(--text); padding: 13px 0;
+      outline: none; font-family: inherit;
+    }
+    .input-wrap input::placeholder { color: var(--text-hint); }
+    .save-btn {
+      width: 100%; padding: 14px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 15px;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .save-btn:disabled { opacity: 0.5; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .save-btn.loading .spinner { display: block; }
+    .save-btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .navbar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--navbar-h);
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around; z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 16px; cursor: pointer; border: none; background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-icon { font-size: 22px; line-height: 1; }
+    .nav-label { font-size: 10px; color: var(--text-hint); font-weight: 500; }
+    .nav-item.active .nav-label { color: var(--blue); }
+    .nav-post {
+      width: 46px; height: 46px; background: var(--blue); border-radius: 14px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; color: #fff; box-shadow: 0 4px 12px rgba(26,95,180,0.35);
+      cursor: pointer; border: none;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <button class="back-btn" onclick="window.location.href='feed.html'">←</button>
+    <span class="header-title">Profilul meu</span>
+    <button class="edit-btn" onclick="openEdit()">Editează</button>
+  </header>
+
+  <div class="hero" id="hero">
+    <div class="avatar-wrap">
+      <div class="avatar-big" id="avatarBig">👤</div>
+      <div class="avatar-edit" onclick="openEdit()">✏️</div>
+    </div>
+    <div class="user-name" id="userName">Se încarcă...</div>
+    <div class="user-meta">
+      <span id="userZone">📍 —</span>
+      <span class="user-badge" id="userBadge">Client</span>
+    </div>
+    <div class="stars" id="userStars" style="display:none">★★★★★</div>
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value" id="statJobs">0</div>
+        <div class="stat-label">Lucrări</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statRating">—</div>
+        <div class="stat-label">Rating</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value" id="statReviews">0</div>
+        <div class="stat-label">Recenzii</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sub-card" id="subCard">
+    <div class="sub-icon">⭐</div>
+    <div class="sub-info">
+      <div class="sub-name" id="subName">Plan Free</div>
+      <div class="sub-desc" id="subDesc">1 licitare / lună</div>
+    </div>
+    <button class="sub-btn" onclick="window.location.href='subscription.html'">Upgrade</button>
+  </div>
+
+  <div class="section" id="catsSection" style="display:none">
+    <div class="section-title">Specialitățile mele</div>
+    <div class="cats-wrap" id="catsWrap"></div>
+  </div>
+
+  <div class="section" style="margin-top:10px">
+    <div class="section-title">Contul meu</div>
+    <div class="section-row" onclick="openEdit()">
+      <span class="row-icon">👤</span>
+      <span class="row-label">Nume</span>
+      <span class="row-value" id="rowName">—</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row" onclick="openEdit()">
+      <span class="row-icon">📍</span>
+      <span class="row-label">Oraș</span>
+      <span class="row-value" id="rowCity">—</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row" onclick="openEdit()">
+      <span class="row-icon">🏘️</span>
+      <span class="row-label">Cartier</span>
+      <span class="row-value" id="rowNeighborhood">—</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row">
+      <span class="row-icon">📱</span>
+      <span class="row-label">Telefon</span>
+      <span class="row-value" id="rowPhone">—</span>
+    </div>
+  </div>
+
+  <div class="section" style="margin-top:10px">
+    <div class="section-title">Setări</div>
+    <div class="section-row" onclick="window.location.href='notifications.html'">
+      <span class="row-icon">🔔</span>
+      <span class="row-label">Notificări</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row" onclick="alert('Confidențialitate — în curând!')">
+      <span class="row-icon">🔒</span>
+      <span class="row-label">Confidențialitate</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row" onclick="alert('Ajutor — în curând!')">
+      <span class="row-icon">❓</span>
+      <span class="row-label">Ajutor & Suport</span>
+      <span class="row-arrow">›</span>
+    </div>
+    <div class="section-row" onclick="alert('Termeni & Condiții — în curând!')">
+      <span class="row-icon">📄</span>
+      <span class="row-label">Termeni & Condiții</span>
+      <span class="row-arrow">›</span>
+    </div>
+  </div>
+
+  <button class="logout-btn" onclick="logout()">🚪 Deconectare</button>
+
+</div>
+
+<nav class="navbar">
+  <button class="nav-item" onclick="window.location.href='feed.html'">
+    <span class="nav-icon">🏠</span><span class="nav-label">Feed</span>
+  </button>
+  <button class="nav-item" onclick="window.location.href='map.html'">
+    <span class="nav-icon">🗺️</span><span class="nav-label">Hartă</span>
+  </button>
+  <button class="nav-post" onclick="window.location.href='post.html'">＋</button>
+  <button class="nav-item" onclick="window.location.href='messages.html'">
+    <span class="nav-icon">💬</span><span class="nav-label">Mesaje</span>
+  </button>
+  <button class="nav-item active">
+    <span class="nav-icon">👤</span><span class="nav-label">Profil</span>
+  </button>
+</nav>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editOverlay" onclick="closeEdit(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Editează profilul</div>
+    <label>Nume complet</label>
+    <div class="input-wrap">
+      <input type="text" id="editName" placeholder="Ion Popescu" autocomplete="name" />
+    </div>
+    <label>Oraș</label>
+    <div class="input-wrap">
+      <input type="text" id="editCity" placeholder="Constanța" />
+    </div>
+    <label>Cartier</label>
+    <div class="input-wrap">
+      <input type="text" id="editNeighborhood" placeholder="Tomis Nord" />
+    </div>
+    <button class="save-btn" id="saveBtn" onclick="saveProfile()">
+      <div class="spinner"></div>
+      <span class="btn-text">Salvează</span>
+    </button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+  const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await sbClient.auth.getSession()
+    if (!session) { window.location.href = 'login.html'; return; }
+    currentUser = session.user
+
+    const { data: profile } = await sbClient
+      .from('users')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single()
+
+    const { data: mp } = await sbClient
+      .from('meserias_profiles')
+      .select('*')
+      .eq('user_id', currentUser.id)
+      .single()
+
+    const { count: jobCount } = await sbClient
+      .from('job_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', currentUser.id)
+
+    renderProfile(profile, mp, jobCount || 0)
+  })
+
+  function renderProfile(p, mp, jobCount) {
+    if (!p) return
+
+    const name = p.full_name || 'Utilizator'
+    const initial = name.charAt(0).toUpperCase()
+
+    document.getElementById('avatarBig').textContent = initial
+    document.getElementById('userName').textContent = name
+    document.getElementById('rowName').textContent = name
+    document.getElementById('rowCity').textContent = p.city || '—'
+    document.getElementById('rowNeighborhood').textContent = p.neighborhood || '—'
+    document.getElementById('rowPhone').textContent = currentUser.phone || '—'
+    document.getElementById('statJobs').textContent = jobCount
+
+    const zone = [p.neighborhood, p.city].filter(Boolean).join(', ')
+    document.getElementById('userZone').textContent = zone ? `📍 ${zone}` : '📍 —'
+
+    const badge = document.getElementById('userBadge')
+    if (p.role === 'meserias') { badge.textContent = 'Meseriaș'; badge.classList.add('meserias') }
+    else if (p.role === 'both') { badge.textContent = 'Meseriaș & Client'; badge.classList.add('meserias') }
+    else { badge.textContent = 'Client' }
+
+    document.getElementById('editName').value = p.full_name || ''
+    document.getElementById('editCity').value = p.city || ''
+    document.getElementById('editNeighborhood').value = p.neighborhood || ''
+
+    if (mp) {
+      document.getElementById('statRating').textContent = mp.rating_avg ? mp.rating_avg.toFixed(1) : '—'
+      document.getElementById('statReviews').textContent = mp.rating_count || 0
+
+      if (mp.rating_avg > 0) {
+        const stars = document.getElementById('userStars')
+        stars.style.display = 'block'
+        const full = Math.round(mp.rating_avg)
+        stars.textContent = '★'.repeat(full) + '☆'.repeat(5 - full)
+      }
+
+      if (mp.category?.length) {
+        document.getElementById('catsSection').style.display = 'block'
+        document.getElementById('catsWrap').innerHTML =
+          mp.category.map(c => `<div class="cat-pill">${c}</div>`).join('')
+      }
+
+      const tiers = {
+        free: { name: 'Plan Free', desc: '1 licitare / lună', icon: '⭐' },
+        mediu: { name: 'Plan Mediu', desc: '10 licitări / lună · 5€', icon: '🌟' },
+        pro: { name: 'Plan Pro', desc: 'Licitări nelimitate · 10€', icon: '💎' }
+      }
+      const tier = tiers[mp.subscription_tier] || tiers.free
+      document.getElementById('subName').textContent = tier.name
+      document.getElementById('subDesc').textContent = tier.desc
+      document.querySelector('.sub-icon').textContent = tier.icon
+      if (mp.subscription_tier === 'pro') {
+        document.querySelector('.sub-btn').textContent = 'Activ ✓'
+        document.querySelector('.sub-btn').disabled = true
+      }
+    } else {
+      document.getElementById('subCard').style.display = 'none'
+    }
+  }
+
+  function openEdit() {
+    document.getElementById('editOverlay').classList.add('open')
+    document.body.style.overflow = 'hidden'
+  }
+
+  function closeEdit(e) {
+    if (e.target === document.getElementById('editOverlay')) {
+      document.getElementById('editOverlay').classList.remove('open')
+      document.body.style.overflow = ''
+    }
+  }
+
+  async function saveProfile() {
+    const name = document.getElementById('editName').value.trim()
+    const city = document.getElementById('editCity').value.trim()
+    const neighborhood = document.getElementById('editNeighborhood').value.trim()
+    if (!name) return
+
+    const btn = document.getElementById('saveBtn')
+    btn.disabled = true; btn.classList.add('loading')
+
+    const { error } = await sbClient
+      .from('users')
+      .update({ full_name: name, city, neighborhood: neighborhood || null })
+      .eq('id', currentUser.id)
+
+    btn.disabled = false; btn.classList.remove('loading')
+
+    if (!error) {
+      document.getElementById('editOverlay').classList.remove('open')
+      document.body.style.overflow = ''
+      window.location.reload()
+    } else {
+      alert('Eroare la salvare. Încearcă din nou.')
+    }
+  }
+
+  async function logout() {
+    if (!confirm('Ești sigur că vrei să te deconectezi?')) return
+    await sbClient.auth.signOut()
+    sessionStorage.clear()
+    window.location.href = 'login.html'
+  }
+</script>
+</body>
+</html>

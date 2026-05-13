@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Cont nou</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #fff; --bg-input: #f4f4f4; --border: #e0e0e0;
+      --error: #c0392b; --success: #27ae60; --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #aaa; --text-hint: #555;
+        --bg: #0f0f0f; --bg-input: #1e1e1e; --border: #2a2a2a;
+        --blue-light: #0c2a52;
+      }
+    }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    body {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px 20px;
+    }
+    .card { width: 100%; max-width: 380px; }
+    .steps { display: flex; gap: 6px; margin-bottom: 28px; }
+    .step-dot { height: 4px; border-radius: 2px; background: var(--border); flex: 1; transition: background 0.3s; }
+    .step-dot.active { background: var(--blue); }
+    .step-dot.done { background: var(--blue); opacity: 0.4; }
+    .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    .role-grid { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+    .role-card {
+      background: var(--bg-input); border: 2px solid transparent;
+      border-radius: 14px; padding: 18px 20px; cursor: pointer;
+      display: flex; align-items: center; gap: 16px;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
+    }
+    .role-card:hover { border-color: var(--blue); }
+    .role-card.selected { border-color: var(--blue); background: var(--blue-light); }
+    .role-icon { font-size: 32px; width: 48px; text-align: center; flex-shrink: 0; }
+    .role-info { flex: 1; }
+    .role-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+    .role-card.selected .role-title { color: var(--blue); }
+    .role-desc { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+    .role-check {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+    }
+    .role-card.selected .role-check { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .role-check::after { content: ''; display: none; }
+    .role-card.selected .role-check::after { content: '✓'; display: block; font-size: 12px; font-weight: 700; }
+    label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 6px;
+      text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .input-wrap {
+      display: flex; align-items: center; background: var(--bg-input);
+      border-radius: var(--radius); border: 1.5px solid transparent;
+      padding: 0 14px; gap: 10px; margin-bottom: 16px;
+    }
+    .input-wrap:focus-within { border-color: var(--blue); background: var(--bg); }
+    .input-wrap input {
+      flex: 1; border: none; background: transparent;
+      font-size: 15px; color: var(--text); padding: 14px 0;
+      outline: none; -webkit-appearance: none; font-family: inherit;
+    }
+    .input-wrap input::placeholder { color: var(--text-hint); }
+    .categories-label {
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.4px;
+    }
+    .categories-wrap { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .cat-hint { font-size: 12px; color: var(--text-hint); margin-bottom: 12px; line-height: 1.5; }
+    .cat-pill {
+      padding: 8px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+      font-size: 13px; font-weight: 500; color: var(--text-muted);
+      cursor: pointer; transition: all 0.15s; background: var(--bg-input);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cat-pill:hover { border-color: var(--blue); color: var(--blue); }
+    .cat-pill.selected { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn {
+      width: 100%; padding: 15px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:hover { background: var(--blue-dark); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error-msg {
+      font-size: 13px; color: var(--error); margin-bottom: 14px;
+      padding: 10px 14px; background: #fdf0ef; border-radius: 8px;
+      border-left: 3px solid var(--error); display: none;
+    }
+    .error-msg.visible { display: block; }
+    .skip-link {
+      display: block; text-align: center; font-size: 13px;
+      color: var(--text-hint); margin-top: 16px; cursor: pointer;
+    }
+    .skip-link:hover { color: var(--text-muted); }
+    .success-screen { text-align: center; padding: 20px 0; }
+    .success-emoji { font-size: 56px; margin-bottom: 16px; display: block; }
+    .success-title { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .success-sub { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="card">
+
+  <!-- SCREEN 1 — Rol -->
+  <div class="screen active" id="screen-role">
+    <div class="steps">
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+    </div>
+    <div class="logo">Lucrex</div>
+    <h1>Cum vrei să folosești Lucrex?</h1>
+    <p class="subtitle">Poți schimba oricând din profilul tău.</p>
+    <div class="role-grid">
+      <div class="role-card" data-role="client" onclick="selectRole(this)">
+        <div class="role-icon">🏠</div>
+        <div class="role-info">
+          <div class="role-title">Caut meseriaș</div>
+          <div class="role-desc">Postez lucrări și primesc oferte de la meseriași din zona mea.</div>
+        </div>
+        <div class="role-check"></div>
+      </div>
+      <div class="role-card" data-role="meserias" onclick="selectRole(this)">
+        <div class="role-icon">🔧</div>
+        <div class="role-info">
+          <div class="role-title">Sunt meseriaș</div>
+          <div class="role-desc">Ofer servicii și primesc clienți din zona mea.</div>
+        </div>
+        <div class="role-check"></div>
+      </div>
+      <div class="role-card" data-role="both" onclick="selectRole(this)">
+        <div class="role-icon">⚡</div>
+        <div class="role-info">
+          <div class="role-title">Ambele</div>
+          <div class="role-desc">Uneori caut, uneori ofer. Flexibil.</div>
+        </div>
+        <div class="role-check"></div>
+      </div>
+    </div>
+    <button class="btn" id="roleBtn" onclick="goToProfile()" disabled>
+      <span class="btn-text">Continuă</span>
+    </button>
+  </div>
+
+  <!-- SCREEN 2 — Profil -->
+  <div class="screen" id="screen-profile">
+    <div class="steps">
+      <div class="step-dot done"></div>
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+    </div>
+    <div class="logo">Lucrex</div>
+    <h1>Ultimul pas!</h1>
+    <p class="subtitle">Câteva detalii rapide ca să-ți găsim cei mai buni meseriași din zona ta.</p>
+    <label for="fullName">Numele tău</label>
+    <div class="input-wrap">
+      <input type="text" id="fullName" placeholder="Ion Popescu" autocomplete="name" />
+    </div>
+    <label for="city">Orașul</label>
+    <div class="input-wrap">
+      <input type="text" id="city" placeholder="ex: Constanța" autocomplete="address-level2" />
+    </div>
+    <label for="neighborhood">Cartierul (opțional)</label>
+    <div class="input-wrap">
+      <input type="text" id="neighborhood" placeholder="ex: Tomis Nord" />
+    </div>
+    <div id="categoriesSection" style="display:none">
+      <div class="categories-label">Specialitatea ta</div>
+      <div class="cat-hint">Selectează una sau mai multe categorii.</div>
+      <div class="categories-wrap" id="categoriesWrap">
+        <div class="cat-pill" data-cat="Instalator" onclick="toggleCat(this)">🚰 Instalator</div>
+        <div class="cat-pill" data-cat="Electrician" onclick="toggleCat(this)">⚡ Electrician</div>
+        <div class="cat-pill" data-cat="Zugrav" onclick="toggleCat(this)">🖌️ Zugrav</div>
+        <div class="cat-pill" data-cat="Lăcătuș" onclick="toggleCat(this)">🔑 Lăcătuș</div>
+        <div class="cat-pill" data-cat="Tâmplar" onclick="toggleCat(this)">🪵 Tâmplar</div>
+        <div class="cat-pill" data-cat="Faianțar" onclick="toggleCat(this)">🧱 Faianțar</div>
+        <div class="cat-pill" data-cat="Frigotehnist" onclick="toggleCat(this)">❄️ Frigotehnist</div>
+        <div class="cat-pill" data-cat="Grădinar" onclick="toggleCat(this)">🌿 Grădinar</div>
+        <div class="cat-pill" data-cat="Mutări" onclick="toggleCat(this)">📦 Mutări</div>
+        <div class="cat-pill" data-cat="Curățenie" onclick="toggleCat(this)">🧹 Curățenie</div>
+        <div class="cat-pill" data-cat="Altele" onclick="toggleCat(this)">➕ Altele</div>
+      </div>
+    </div>
+    <div class="error-msg" id="profileError" role="alert"></div>
+    <button class="btn" id="saveBtn" onclick="saveProfile()">
+      <div class="spinner"></div>
+      <span class="btn-text">Intru în Lucrex! 🚀</span>
+    </button>
+    <a class="skip-link" onclick="skipProfile()">Completez mai târziu</a>
+  </div>
+
+  <!-- SCREEN 3 — Succes -->
+  <div class="screen" id="screen-success">
+    <div class="success-screen">
+      <span class="success-emoji">🎉</span>
+      <div class="success-title">Bun venit în Lucrex!</div>
+      <p class="success-sub">Contul tău e gata.<br>Te ducem la feed în câteva secunde...</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let selectedRole = null
+  let selectedCategories = []
+
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
+    document.getElementById(id).classList.add('active')
+    window.scrollTo(0, 0)
+  }
+
+  function selectRole(card) {
+    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'))
+    card.classList.add('selected')
+    selectedRole = card.dataset.role
+    document.getElementById('roleBtn').disabled = false
+  }
+
+  function goToProfile() {
+    if (!selectedRole) return
+    const showCats = selectedRole === 'meserias' || selectedRole === 'both'
+    document.getElementById('categoriesSection').style.display = showCats ? 'block' : 'none'
+    showScreen('screen-profile')
+  }
+
+  function toggleCat(pill) {
+    const cat = pill.dataset.cat
+    if (pill.classList.contains('selected')) {
+      pill.classList.remove('selected')
+      selectedCategories = selectedCategories.filter(c => c !== cat)
+    } else {
+      pill.classList.add('selected')
+      selectedCategories.push(cat)
+    }
+  }
+
+  async function saveProfile() {
+    const fullName = document.getElementById('fullName').value.trim()
+    const city = document.getElementById('city').value.trim()
+    const neighborhood = document.getElementById('neighborhood').value.trim()
+
+    if (!fullName) {
+      showProfileError('Introdu numele tău pentru a continua.')
+      document.getElementById('fullName').focus()
+      return
+    }
+    if (!city) {
+      showProfileError('Introdu orașul tău.')
+      document.getElementById('city').focus()
+      return
+    }
+
+    const isMeserias = selectedRole === 'meserias' || selectedRole === 'both'
+    if (isMeserias && selectedCategories.length === 0) {
+      showProfileError('Selectează cel puțin o specialitate.')
+      return
+    }
+
+    hideProfileError()
+    setLoading(true)
+
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) throw new Error('Sesiunea a expirat. Te rugăm să te autentifici din nou.')
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          full_name: fullName,
+          role: selectedRole,
+          city: city,
+          neighborhood: neighborhood || null
+        })
+        .eq('id', user.id)
+
+      if (updateError) throw updateError
+
+      if (isMeserias) {
+        const { error: meseriasError } = await supabase
+          .from('meserias_profiles')
+          .upsert({
+            user_id: user.id,
+            category: selectedCategories
+          }, { onConflict: 'user_id' })
+
+        if (meseriasError) throw meseriasError
+      }
+
+      showScreen('screen-success')
+      setTimeout(() => { window.location.href = 'feed.html' }, 2000)
+
+    } catch (err) {
+      console.error('Save profile error:', err)
+      showProfileError(err.message || 'Ceva nu a mers. Încearcă din nou.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function skipProfile() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user && selectedRole) {
+      await supabase
+        .from('users')
+        .update({ role: selectedRole })
+        .eq('id', user.id)
+    }
+    window.location.href = 'feed.html'
+  }
+
+  function showProfileError(msg) {
+    const el = document.getElementById('profileError')
+    el.textContent = msg
+    el.classList.add('visible')
+  }
+
+  function hideProfileError() {
+    document.getElementById('profileError').classList.remove('visible')
+  }
+
+  function setLoading(loading) {
+    const btn = document.getElementById('saveBtn')
+    btn.disabled = loading
+    btn.classList.toggle('loading', loading)
+  }
+
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = 'login.html' }
+  })
+</script>
+</body>
+</html>

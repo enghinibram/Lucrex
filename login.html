@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Intră în cont</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #fff; --bg-input: #f4f4f4; --border: #e0e0e0;
+      --error: #c0392b; --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #aaa; --text-hint: #666;
+        --bg: #0f0f0f; --bg-input: #1e1e1e; --border: #2a2a2a;
+        --blue-light: #0c2a52;
+      }
+    }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    body {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px 20px;
+    }
+    .card { width: 100%; max-width: 380px; }
+    .logo { font-size: 28px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; margin-bottom: 4px; }
+    .tagline { font-size: 13px; color: var(--text-muted); margin-bottom: 36px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; line-height: 1.5; }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .input-wrap {
+      display: flex; align-items: center; background: var(--bg-input);
+      border-radius: var(--radius); border: 1.5px solid transparent;
+      padding: 0 14px; gap: 10px; transition: border-color 0.2s; margin-bottom: 8px;
+    }
+    .input-wrap:focus-within { border-color: var(--blue); background: var(--bg); }
+    .input-icon { font-size: 18px; color: var(--text-hint); }
+    .input-wrap input {
+      flex: 1; border: none; background: transparent; font-size: 16px;
+      color: var(--text); padding: 14px 0; outline: none;
+      appearance: none; -webkit-appearance: none; font-family: inherit;
+    }
+    .input-wrap input::placeholder { color: var(--text-hint); }
+    .hint { font-size: 12px; color: var(--text-hint); margin-bottom: 24px; line-height: 1.6; }
+    .error-msg {
+      font-size: 13px; color: var(--error); margin-bottom: 12px; display: none;
+      padding: 10px 14px; background: #fdf0ef; border-radius: 8px;
+      border-left: 3px solid var(--error);
+    }
+    .error-msg.visible { display: block; }
+    .btn {
+      width: 100%; padding: 15px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:hover { background: var(--blue-dark); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .terms { text-align: center; font-size: 12px; color: var(--text-hint); line-height: 1.7; margin-top: 20px; }
+    .terms a { color: var(--blue); text-decoration: none; }
+    .info-box {
+      background: var(--blue-light); border-radius: 10px; padding: 12px 14px;
+      font-size: 12px; color: var(--blue); line-height: 1.6; margin-bottom: 20px;
+      display: flex; gap: 8px; align-items: flex-start;
+    }
+    .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">Lucrex</div>
+    <div class="tagline">Meseriașii cartierului tău</div>
+
+    <h1>Bine ai venit!</h1>
+    <p class="subtitle">Introdu adresa de email. Îți trimitem un cod de verificare — fără parolă necesară.</p>
+
+    <label for="email">Adresa de email</label>
+    <div class="input-wrap">
+      <span class="input-icon">✉️</span>
+      <input
+        type="email" id="email" name="email"
+        placeholder="ion@example.com"
+        autocomplete="email"
+        inputmode="email"
+      />
+    </div>
+
+    <p class="hint">Vei primi un email cu un cod de 6 cifre. Verifică și folderul Spam dacă nu apare.</p>
+
+    <div class="error-msg" id="errorMsg" role="alert"></div>
+
+    <button class="btn" id="sendBtn" type="button">
+      <div class="spinner"></div>
+      <span class="btn-text">Trimite codul</span>
+    </button>
+
+    <p class="terms">
+      Continuând, ești de acord cu<br>
+      <a href="/termeni">Termenii și Condițiile</a> și <a href="/confidentialitate">Politica de Confidențialitate</a>
+    </p>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    const emailInput = document.getElementById('email')
+    const sendBtn    = document.getElementById('sendBtn')
+    const errorMsg   = document.getElementById('errorMsg')
+
+    emailInput.addEventListener('input', hideError)
+    emailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendOTP() })
+
+    function validateEmail() {
+      const val = emailInput.value.trim()
+      if (!val) return 'Introdu adresa de email.'
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return 'Adresa de email nu este validă.'
+      return null
+    }
+
+    function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('visible') }
+    function hideError() { errorMsg.classList.remove('visible') }
+    function setLoading(on) { sendBtn.disabled = on; sendBtn.classList.toggle('loading', on) }
+
+    sendBtn.addEventListener('click', sendOTP)
+
+    async function sendOTP() {
+      hideError()
+      const err = validateEmail()
+      if (err) { showError(err); emailInput.focus(); return }
+
+      const email = emailInput.value.trim()
+      setLoading(true)
+
+      try {
+        const { error } = await sbClient.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: true, emailRedirectTo: undefined }
+        })
+        if (error) throw error
+
+        // Salvăm emailul pentru ecranul OTP
+        sessionStorage.setItem('cx_email', email)
+        window.location.href = 'otp.html'
+
+      } catch (err) {
+        console.error('OTP error:', err)
+        if (err.message?.includes('rate limit') || err.status === 429) {
+          showError('Prea multe încercări. Așteaptă câteva minute și încearcă din nou.')
+        } else {
+          showError('Ceva nu a mers. Verifică conexiunea și încearcă din nou.')
+        }
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    // Focus automat
+    window.addEventListener('load', () => emailInput.focus())
+
+    // PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(e => console.log('SW failed:', e))
+    }
+  </script>
+</body>
+</html>

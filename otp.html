@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Verificare cod</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <link rel="manifest" href="/manifest.json" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #fff; --bg-input: #f4f4f4; --border: #e0e0e0;
+      --error: #c0392b; --success: #27ae60; --radius: 12px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #aaa; --text-hint: #666;
+        --bg: #0f0f0f; --bg-input: #1e1e1e; --border: #2a2a2a;
+        --blue-light: #0c2a52;
+      }
+    }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+    }
+    body {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px 20px;
+    }
+    .card { width: 100%; max-width: 380px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 13px; color: var(--text-muted); margin-bottom: 28px;
+      cursor: pointer; background: none; border: none; padding: 0;
+    }
+    .back-btn:hover { color: var(--blue); }
+    .steps { display: flex; gap: 6px; margin-bottom: 28px; }
+    .step-dot { height: 4px; border-radius: 2px; background: var(--border); flex: 1; transition: background 0.3s; }
+    .step-dot.active { background: var(--blue); }
+    .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; margin-bottom: 20px; }
+    h1 { font-size: 22px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+    .subtitle { font-size: 14px; color: var(--text-muted); margin-bottom: 32px; line-height: 1.6; }
+    .subtitle strong { color: var(--text); font-weight: 600; }
+    .otp-wrap { display: flex; gap: 10px; justify-content: center; margin-bottom: 24px; }
+    .otp-box {
+      width: 48px; height: 58px; background: var(--bg-input);
+      border: 2px solid transparent; border-radius: var(--radius);
+      font-size: 24px; font-weight: 700; color: var(--text);
+      text-align: center; outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      caret-color: var(--blue);
+      appearance: none; -webkit-appearance: none;
+    }
+    .otp-box:focus { border-color: var(--blue); background: var(--bg); }
+    .otp-box.filled { border-color: var(--blue); background: var(--blue-light); }
+    .otp-box.error { border-color: var(--error); background: #fdf0ef; animation: shake 0.3s ease; }
+    .otp-box.success { border-color: var(--success); background: #eafaf1; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      75% { transform: translateX(4px); }
+    }
+    .timer-wrap { text-align: center; margin-bottom: 12px; font-size: 13px; color: var(--text-muted); }
+    .timer-wrap span { color: var(--blue); font-weight: 600; }
+    .resend-btn {
+      background: none; border: none; color: var(--blue); font-size: 13px;
+      font-weight: 600; cursor: pointer; padding: 0; display: none;
+      margin: 0 auto 24px; display: none; text-align: center; width: 100%;
+    }
+    .resend-btn.visible { display: block; }
+    .resend-btn:hover { text-decoration: underline; }
+    .error-msg {
+      font-size: 13px; color: var(--error); margin-bottom: 16px;
+      padding: 10px 14px; background: #fdf0ef; border-radius: 8px;
+      border-left: 3px solid var(--error); display: none; text-align: center;
+    }
+    .error-msg.visible { display: block; }
+    .success-wrap { text-align: center; display: none; padding: 20px 0; }
+    .success-wrap.visible { display: block; }
+    .success-icon {
+      width: 64px; height: 64px; background: #eafaf1; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 16px; font-size: 28px;
+    }
+    .success-title { font-size: 20px; font-weight: 600; color: var(--success); margin-bottom: 8px; }
+    .success-sub { font-size: 14px; color: var(--text-muted); }
+    .btn {
+      width: 100%; padding: 15px; background: var(--blue); color: #fff;
+      border: none; border-radius: var(--radius); font-size: 16px; font-weight: 600;
+      cursor: pointer; transition: background 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn:hover { background: var(--blue-dark); }
+    .btn:active { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite; display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .help-text { text-align: center; font-size: 12px; color: var(--text-hint); margin-top: 20px; line-height: 1.7; }
+    .help-text a { color: var(--blue); text-decoration: none; }
+    .spam-note {
+      text-align: center; font-size: 12px; color: var(--text-hint);
+      margin-bottom: 20px; padding: 10px; background: var(--bg-input);
+      border-radius: 8px; line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+
+    <button class="back-btn" onclick="window.location.href='login.html'">
+      ← Înapoi
+    </button>
+
+    <div class="steps">
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <div class="logo">Lucrex</div>
+
+    <h1>Verifică emailul</h1>
+    <p class="subtitle">
+      Am trimis un cod de 6 cifre la <strong id="emailDisplay">emailul tău</strong>.<br>
+      Introdu-l mai jos.
+    </p>
+
+    <div class="spam-note">
+      💡 Nu găsești emailul? Verifică și folderul <strong>Spam</strong> sau <strong>Promotions</strong>.
+    </div>
+
+    <div class="otp-wrap" id="otpWrap">
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="0" />
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="1" />
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="2" />
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="3" />
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="4" />
+      <input class="otp-box" type="tel" inputmode="numeric" maxlength="1" data-index="5" />
+    </div>
+
+    <div class="timer-wrap" id="timerWrap">
+      Retrimite codul în <span id="timerDisplay">1:59</span>
+    </div>
+    <button class="resend-btn" id="resendBtn">Retrimite codul pe email</button>
+
+    <div class="error-msg" id="errorMsg" role="alert"></div>
+
+    <div class="success-wrap" id="successWrap">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Verificat!</div>
+      <div class="success-sub">Te redirecționăm...</div>
+    </div>
+
+    <button class="btn" id="verifyBtn" disabled>
+      <div class="spinner"></div>
+      <span class="btn-text">Verifică codul</span>
+    </button>
+
+    <p class="help-text">
+      Ai introdus un email greșit?<br>
+      <a href="login.html">Încearcă cu alt email</a>
+    </p>
+
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    // Citim emailul salvat de login.html
+    const savedEmail = sessionStorage.getItem('cx_email')
+    if (!savedEmail) { window.location.href = 'login.html' }
+    document.getElementById('emailDisplay').textContent = savedEmail
+
+    // OTP Boxes
+    const boxes     = document.querySelectorAll('.otp-box')
+    const verifyBtn = document.getElementById('verifyBtn')
+    const errorMsg  = document.getElementById('errorMsg')
+
+    boxes.forEach((box, index) => {
+      box.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/\D/g, '')
+        box.value = val ? val[val.length - 1] : ''
+        box.classList.toggle('filled', !!box.value)
+        if (box.value && index < 5) boxes[index + 1].focus()
+        hideError()
+        checkAllFilled()
+      })
+
+      box.addEventListener('paste', (e) => {
+        e.preventDefault()
+        const pasted = (e.clipboardData || window.clipboardData)
+          .getData('text').replace(/\D/g, '').slice(0, 6)
+        if (pasted.length === 6) {
+          boxes.forEach((b, i) => {
+            b.value = pasted[i] || ''
+            b.classList.toggle('filled', !!b.value)
+          })
+          boxes[5].focus()
+          checkAllFilled()
+        }
+      })
+
+      box.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !box.value && index > 0) {
+          boxes[index - 1].focus()
+          boxes[index - 1].value = ''
+          boxes[index - 1].classList.remove('filled')
+          checkAllFilled()
+        }
+        if (e.key === 'Enter') verifyOTP()
+      })
+    })
+
+    function getOTPCode() { return Array.from(boxes).map(b => b.value).join('') }
+    function checkAllFilled() { verifyBtn.disabled = getOTPCode().length !== 6 }
+
+    // Timer
+    let timerInterval
+    let secondsLeft = 119
+
+    function startTimer() {
+      const timerDisplay = document.getElementById('timerDisplay')
+      const timerWrap    = document.getElementById('timerWrap')
+      const resendBtn    = document.getElementById('resendBtn')
+
+      timerInterval = setInterval(() => {
+        secondsLeft--
+        const m = Math.floor(secondsLeft / 60)
+        const s = secondsLeft % 60
+        timerDisplay.textContent = `${m}:${s.toString().padStart(2, '0')}`
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval)
+          timerWrap.style.display = 'none'
+          resendBtn.classList.add('visible')
+        }
+      }, 1000)
+    }
+
+    startTimer()
+
+    // Retrimite email
+    document.getElementById('resendBtn').addEventListener('click', async () => {
+      hideError()
+      try {
+        const { error } = await sbClient.auth.signInWithOtp({
+          email: savedEmail,
+          options: { shouldCreateUser: true }
+        })
+        if (error) throw error
+
+        secondsLeft = 119
+        document.getElementById('timerWrap').style.display = 'block'
+        document.getElementById('resendBtn').classList.remove('visible')
+        boxes.forEach(b => { b.value = ''; b.classList.remove('filled') })
+        boxes[0].focus()
+        clearInterval(timerInterval)
+        startTimer()
+      } catch {
+        showError('Nu am putut retrimite codul. Încearcă din nou în câteva secunde.')
+      }
+    })
+
+    // Verificare cod EMAIL
+    verifyBtn.addEventListener('click', verifyOTP)
+
+    async function verifyOTP() {
+      const code = getOTPCode()
+      if (code.length !== 6) return
+
+      hideError()
+      setLoading(true)
+
+      try {
+        const { data, error } = await sbClient.auth.verifyOtp({
+          email: savedEmail,
+          token: code,
+          type: 'email'    // email OTP
+        })
+
+        if (error) throw error
+
+        const user = data.user
+
+        // Verificăm dacă are profil completat
+        const { data: profile } = await sbClient
+          .from('users')
+          .select('full_name, role')
+          .eq('id', user.id)
+          .single()
+
+        boxes.forEach(b => { b.classList.remove('filled'); b.classList.add('success') })
+        document.getElementById('successWrap').classList.add('visible')
+        verifyBtn.style.display = 'none'
+
+        setTimeout(() => {
+          window.location.href = profile?.full_name ? 'feed.html' : 'onboarding.html'
+        }, 1200)
+
+      } catch (err) {
+    
+        boxes.forEach(b => b.classList.add('error'))
+        setTimeout(() => boxes.forEach(b => b.classList.remove('error')), 600)
+
+        if (err.message?.includes('expired') || err.message?.includes('invalid')) {
+          showError('Codul este greșit sau a expirat. Verifică emailul sau retrimite codul.')
+        } else {
+          showError('Ceva nu a mers. Încearcă din nou.')
+        }
+
+        boxes.forEach(b => { b.value = ''; b.classList.remove('filled') })
+        boxes[0].focus()
+        verifyBtn.disabled = true
+
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    function showError(msg) { errorMsg.textContent = msg; errorMsg.classList.add('visible') }
+    function hideError() { errorMsg.classList.remove('visible') }
+    function setLoading(on) { verifyBtn.disabled = on; verifyBtn.classList.toggle('loading', on) }
+
+    window.addEventListener('load', () => boxes[0].focus())
+
+    // PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(() => console.log('SW registered'))
+        .catch(e => console.log('SW failed:', e))
+    }
+  </script>
+</body>
+</html>

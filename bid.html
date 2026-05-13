@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Trimite ofertă</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --red: #df2e38; --green: #27ae60; --orange: #e67e22;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #f0f2f5; --bg-card: #fff; --bg-input: #f4f4f4;
+      --border: #e4e4e4; --radius: 14px; --header-h: 56px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #999; --text-hint: #555;
+        --bg: #0a0a0a; --bg-card: #1a1a1a; --bg-input: #222;
+        --border: #2a2a2a; --blue-light: #0c2a52;
+      }
+    }
+    html, body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+    .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 40px; }
+    .header {
+      position: sticky; top: 0; background: var(--bg-card);
+      border-bottom: 1px solid var(--border); height: var(--header-h);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 100;
+    }
+    .close-btn { background: none; border: none; font-size: 22px; cursor: pointer; color: var(--text-muted); }
+    .header-title { font-size: 16px; font-weight: 600; }
+    .send-btn { background: var(--blue); color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .content { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .job-preview { background: var(--bg-card); border-radius: var(--radius); padding: 16px; border-left: 4px solid var(--blue); }
+    .job-preview-label { font-size: 11px; font-weight: 700; color: var(--blue); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .job-preview-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .job-preview-meta { font-size: 13px; color: var(--text-muted); display: flex; gap: 10px; flex-wrap: wrap; }
+    .job-tag { font-size: 12px; padding: 3px 10px; border-radius: 8px; background: var(--bg-input); color: var(--text-muted); }
+    .job-urgent { background: #fdf0ef; color: var(--red); }
+    .form-card { background: var(--bg-card); border-radius: var(--radius); overflow: hidden; }
+    .field { padding: 0 16px; border-bottom: 1px solid var(--border); }
+    .field:last-child { border-bottom: none; }
+    .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-hint); padding-top: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .field input, .field textarea { width: 100%; border: none; background: transparent; font-size: 15px; color: var(--text); padding: 8px 0 14px; outline: none; font-family: inherit; resize: none; -webkit-appearance: none; }
+    .field input::placeholder, .field textarea::placeholder { color: var(--text-hint); }
+    .price-wrap { display: flex; align-items: center; gap: 8px; }
+    .price-currency { font-size: 18px; font-weight: 600; color: var(--text-muted); padding-bottom: 14px; padding-top: 8px; }
+    .price-input { font-size: 24px; font-weight: 700; color: var(--text); }
+    .date-options { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 16px 14px; }
+    .date-opt { padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--border); font-size: 13px; color: var(--text-muted); cursor: pointer; background: var(--bg-card); transition: all 0.15s; }
+    .date-opt.selected { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .tip-card { background: var(--blue-light); border-radius: var(--radius); padding: 14px 16px; display: flex; gap: 10px; align-items: flex-start; }
+    .tip-icon { font-size: 18px; flex-shrink: 0; }
+    .tip-text { font-size: 13px; color: var(--blue); line-height: 1.6; }
+    .bids-info { background: var(--bg-card); border-radius: var(--radius); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .bids-label { font-size: 14px; color: var(--text-muted); }
+    .bids-count { font-size: 16px; font-weight: 700; color: var(--orange); }
+    .success-overlay {
+      position: fixed; inset: 0; background: var(--bg-card);
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; z-index: 500; text-align: center;
+      padding: 40px; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    }
+    .success-overlay.visible { opacity: 1; pointer-events: all; }
+    .success-emoji { font-size: 64px; margin-bottom: 20px; }
+    .success-title { font-size: 24px; font-weight: 700; margin-bottom: 10px; }
+    .success-sub { font-size: 15px; color: var(--text-muted); line-height: 1.6; margin-bottom: 30px; }
+    .success-btn { background: var(--blue); color: #fff; border: none; padding: 14px 32px; border-radius: var(--radius); font-size: 15px; font-weight: 600; cursor: pointer; }
+    .spinner { width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+    .send-btn.loading .spinner { display: inline-block; }
+    .send-btn.loading .btn-text { display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <button class="close-btn" onclick="history.back()">✕</button>
+    <span class="header-title">Trimite ofertă</span>
+    <button class="send-btn" id="sendBtn" onclick="submitBid()" disabled>
+      <div class="spinner"></div>
+      <span class="btn-text">Trimite</span>
+    </button>
+  </header>
+
+  <div class="content">
+
+    <div class="job-preview" id="jobPreview">
+      <div class="job-preview-label">Lucrare</div>
+      <div class="job-preview-title" id="previewTitle">Se încarcă...</div>
+      <div class="job-preview-meta" id="previewMeta"></div>
+    </div>
+
+    <div class="bids-info">
+      <span class="bids-label">📋 Oferte trimise până acum</span>
+      <span class="bids-count" id="bidsCount">0</span>
+    </div>
+
+    <div class="form-card">
+      <div class="field">
+        <label>Prețul tău (lei)</label>
+        <div class="price-wrap">
+          <span class="price-currency">lei</span>
+          <input class="price-input" type="number" id="bidPrice" placeholder="250" min="1" oninput="checkReady()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="field"><label>Când poți?</label></div>
+      <div class="date-options" id="dateOptions">
+        <div class="date-opt selected" data-days="0" onclick="selectDate(this)">Azi</div>
+        <div class="date-opt" data-days="1" onclick="selectDate(this)">Mâine</div>
+        <div class="date-opt" data-days="2" onclick="selectDate(this)">Poimâine</div>
+        <div class="date-opt" data-days="7" onclick="selectDate(this)">Săptămâna viitoare</div>
+        <div class="date-opt" data-days="-1" onclick="selectDate(this)">Negociabil</div>
+      </div>
+    </div>
+
+    <div class="form-card">
+      <div class="field">
+        <label>Mesaj pentru client (opțional)</label>
+        <textarea id="bidMessage" placeholder="ex: Am experiență cu acest tip de lucrare. Pot veni și să verific înainte de a stabili prețul final." rows="4" maxlength="500"></textarea>
+      </div>
+    </div>
+
+    <div class="tip-card">
+      <span class="tip-icon">💡</span>
+      <span class="tip-text">
+        Ofertele cu un mesaj personalizat au cu <strong>40% mai multe șanse</strong> să fie acceptate.
+        Menționează experiența ta și când ești disponibil exact.
+      </span>
+    </div>
+
+  </div>
+</div>
+
+<div class="success-overlay" id="successOverlay">
+  <div class="success-emoji">🎉</div>
+  <div class="success-title">Ofertă trimisă!</div>
+  <div class="success-sub">
+    Clientul a fost notificat și va<br>
+    revizui oferta ta în curând.<br><br>
+    Vei primi notificare când răspunde.
+  </div>
+  <button class="success-btn" onclick="window.location.href='feed.html'">
+    Înapoi la Feed
+  </button>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+  const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  let currentUser = null
+  let jobData = null
+  let selectedDate = new Date()
+  let selectedDays = 0
+
+  const jobId = new URLSearchParams(window.location.search).get('job')
+
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await sbClient.auth.getSession()
+    if (!session) { window.location.href = 'login.html'; return; }
+    currentUser = session.user
+
+    if (!jobId) { history.back(); return; }
+
+    const { data: job } = await sbClient
+      .from('job_requests')
+      .select('*, client:users(full_name, neighborhood)')
+      .eq('id', jobId)
+      .single()
+
+    if (!job) { history.back(); return; }
+    jobData = job
+
+    document.getElementById('previewTitle').textContent = job.title
+    const meta = document.getElementById('previewMeta')
+    meta.innerHTML = `
+      <span class="job-tag">🔧 ${job.category}</span>
+      ${job.budget_max ? `<span class="job-tag">💰 până la ${job.budget_max} lei</span>` : ''}
+      ${job.is_urgent ? '<span class="job-tag job-urgent">🚨 Urgent</span>' : ''}
+      ${job.client?.neighborhood ? `<span class="job-tag">📍 ${job.client.neighborhood}</span>` : ''}
+    `
+
+    const { count } = await sbClient
+      .from('bids')
+      .select('id', { count: 'exact', head: true })
+      .eq('job_id', jobId)
+
+    document.getElementById('bidsCount').textContent = count || 0
+
+    const { data: existing } = await sbClient
+      .from('bids')
+      .select('id')
+      .eq('job_id', jobId)
+      .eq('meserias_id', currentUser.id)
+      .single()
+
+    if (existing) {
+      const btn = document.getElementById('sendBtn')
+      btn.disabled = true
+      btn.querySelector('.btn-text').textContent = 'Ai trimis deja o ofertă'
+    }
+  })
+
+  function selectDate(opt) {
+    document.querySelectorAll('.date-opt').forEach(o => o.classList.remove('selected'))
+    opt.classList.add('selected')
+    selectedDays = parseInt(opt.dataset.days)
+    if (selectedDays >= 0) {
+      selectedDate = new Date()
+      selectedDate.setDate(selectedDate.getDate() + selectedDays)
+    } else {
+      selectedDate = null
+    }
+  }
+
+  function checkReady() {
+    const price = parseInt(document.getElementById('bidPrice').value)
+    document.getElementById('sendBtn').disabled = !(price > 0)
+  }
+
+  async function submitBid() {
+    const price = parseInt(document.getElementById('bidPrice').value)
+    if (!price || price <= 0) return
+
+    const btn = document.getElementById('sendBtn')
+    btn.disabled = true
+    btn.classList.add('loading')
+
+    try {
+      const { error } = await sbClient.from('bids').insert({
+        job_id: jobId,
+        meserias_id: currentUser.id,
+        price: price,
+        message: document.getElementById('bidMessage').value.trim() || null,
+        available_date: selectedDate ? selectedDate.toISOString().split('T')[0] : null,
+        status: 'pending'
+      })
+
+      if (error) throw error
+
+      await sbClient.from('notifications').insert({
+        user_id: jobData.client_id,
+        type: 'new_bid',
+        title: 'Ofertă nouă!',
+        body: `Un meseriaș a trimis o ofertă de ${price} lei pentru lucrarea ta.`,
+        ref_id: jobId
+      })
+
+      document.getElementById('successOverlay').classList.add('visible')
+
+    } catch (err) {
+      console.error(err)
+      btn.disabled = false
+      btn.classList.remove('loading')
+      if (err.code === '23505') {
+        alert('Ai trimis deja o ofertă pentru această lucrare.')
+      } else {
+        alert('Eroare la trimiterea ofertei. Încearcă din nou.')
+      }
+    }
+  }
+</script>
+</body>
+</html>
