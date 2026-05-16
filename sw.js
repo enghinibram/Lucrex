@@ -1,4 +1,4 @@
-const CACHE_NAME = 'lucrex-v1';
+const CACHE_NAME = 'lucrex-v3';
 const urlsToCache = [
   '/',
   '/login.html',

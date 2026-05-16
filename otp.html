@@ -6,7 +6,6 @@
   <title>Lucrex — Verificare cod</title>
   <meta name="theme-color" content="#1a5fb4" />
   <link rel="manifest" href="/manifest.json" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -69,7 +68,7 @@
     .timer-wrap span { color: var(--blue); font-weight: 600; }
     .resend-btn {
       background: none; border: none; color: var(--blue); font-size: 13px;
-      font-weight: 600; cursor: pointer; padding: 0; display: none;
+      font-weight: 600; cursor: pointer; padding: 0;
       margin: 0 auto 24px; display: none; text-align: center; width: 100%;
     }
     .resend-btn.visible { display: block; }
@@ -117,10 +116,7 @@
 </head>
 <body>
   <div class="card">
-
-    <button class="back-btn" onclick="window.location.href='login.html'">
-      ← Înapoi
-    </button>
+    <button class="back-btn" onclick="window.location.href='login.html'">← Înapoi</button>
 
     <div class="steps">
       <div class="step-dot active"></div>
@@ -129,7 +125,6 @@
     </div>
 
     <div class="logo">Lucrex</div>
-
     <h1>Verifică emailul</h1>
     <p class="subtitle">
       Am trimis un cod de 6 cifre la <strong id="emailDisplay">emailul tău</strong>.<br>
@@ -171,20 +166,21 @@
       Ai introdus un email greșit?<br>
       <a href="login.html">Încearcă cu alt email</a>
     </p>
-
   </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
     const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
-    const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnY'
+    
+    // Corectare conflict nume instanță (Prefixat cu 'supabaseClient')
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-    // Citim emailul salvat de login.html
     const savedEmail = sessionStorage.getItem('cx_email')
     if (!savedEmail) { window.location.href = 'login.html' }
     document.getElementById('emailDisplay').textContent = savedEmail
 
-    // OTP Boxes
     const boxes     = document.querySelectorAll('.otp-box')
     const verifyBtn = document.getElementById('verifyBtn')
     const errorMsg  = document.getElementById('errorMsg')
@@ -227,7 +223,6 @@
     function getOTPCode() { return Array.from(boxes).map(b => b.value).join('') }
     function checkAllFilled() { verifyBtn.disabled = getOTPCode().length !== 6 }
 
-    // Timer
     let timerInterval
     let secondsLeft = 119
 
@@ -251,11 +246,10 @@
 
     startTimer()
 
-    // Retrimite email
     document.getElementById('resendBtn').addEventListener('click', async () => {
       hideError()
       try {
-        const { error } = await sbClient.auth.signInWithOtp({
+        const { error } = await supabaseClient.auth.signInWithOtp({
           email: savedEmail,
           options: { shouldCreateUser: true }
         })
@@ -273,7 +267,6 @@
       }
     })
 
-    // Verificare cod EMAIL
     verifyBtn.addEventListener('click', verifyOTP)
 
     async function verifyOTP() {
@@ -284,18 +277,18 @@
       setLoading(true)
 
       try {
-        const { data, error } = await sbClient.auth.verifyOtp({
+        const { data, error } = await supabaseClient.auth.verifyOtp({
           email: savedEmail,
           token: code,
-          type: 'email'    // email OTP
+          type: 'email'
         })
 
         if (error) throw error
 
         const user = data.user
 
-        // Verificăm dacă are profil completat
-        const { data: profile } = await sbClient
+        // Aici apelăm corect instanța configurată cu API Key valid
+        const { data: profile } = await supabaseClient
           .from('users')
           .select('full_name, role')
           .eq('id', user.id)
@@ -310,7 +303,6 @@
         }, 1200)
 
       } catch (err) {
-    
         boxes.forEach(b => b.classList.add('error'))
         setTimeout(() => boxes.forEach(b => b.classList.remove('error')), 600)
 
@@ -323,7 +315,6 @@
         boxes.forEach(b => { b.value = ''; b.classList.remove('filled') })
         boxes[0].focus()
         verifyBtn.disabled = true
-
       } finally {
         setLoading(false)
       }
@@ -333,13 +324,10 @@
     function hideError() { errorMsg.classList.remove('visible') }
     function setLoading(on) { verifyBtn.disabled = on; verifyBtn.classList.toggle('loading', on) }
 
-    window.addEventListener('load', () => boxes[0].focus())
+    boxes[0].focus()
 
-    // PWA
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log('SW registered'))
-        .catch(e => console.log('SW failed:', e))
+      navigator.serviceWorker.register('/sw.js').catch(() => {})
     }
   </script>
 </body>

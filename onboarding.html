@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Lucrex — Cont nou</title>
   <meta name="theme-color" content="#1a5fb4" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -60,9 +59,8 @@
       border: 2px solid var(--border); flex-shrink: 0;
       display: flex; align-items: center; justify-content: center; transition: all 0.2s;
     }
-    .role-card.selected .role-check { background: var(--blue); border-color: var(--blue); color: #fff; }
-    .role-check::after { content: ''; display: none; }
-    .role-card.selected .role-check::after { content: '✓'; display: block; font-size: 12px; font-weight: 700; }
+    .role-card.selected .role-check { background: var(--blue); border-color: var(--blue); color: #fff; font-size: 12px; font-weight: 700; }
+    .role-card.selected .role-check::after { content: '✓'; }
     label {
       display: block; font-size: 12px; font-weight: 600;
       color: var(--text-muted); margin-bottom: 6px;
@@ -230,13 +228,19 @@
 
 </div>
 
-<script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
   const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnY'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   let selectedRole = null
   let selectedCategories = []
+
+  // Verifică sesiunea la load
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { window.location.href = 'login.html' }
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
@@ -244,21 +248,22 @@
     window.scrollTo(0, 0)
   }
 
-  function selectRole(card) {
+  // Expunem funcțiile pe window pentru onclick handlers din HTML
+  window.selectRole = function(card) {
     document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'))
     card.classList.add('selected')
     selectedRole = card.dataset.role
     document.getElementById('roleBtn').disabled = false
   }
 
-  function goToProfile() {
+  window.goToProfile = function() {
     if (!selectedRole) return
     const showCats = selectedRole === 'meserias' || selectedRole === 'both'
     document.getElementById('categoriesSection').style.display = showCats ? 'block' : 'none'
     showScreen('screen-profile')
   }
 
-  function toggleCat(pill) {
+  window.toggleCat = function(pill) {
     const cat = pill.dataset.cat
     if (pill.classList.contains('selected')) {
       pill.classList.remove('selected')
@@ -269,7 +274,7 @@
     }
   }
 
-  async function saveProfile() {
+  window.saveProfile = async function() {
     const fullName = document.getElementById('fullName').value.trim()
     const city = document.getElementById('city').value.trim()
     const neighborhood = document.getElementById('neighborhood').value.trim()
@@ -332,7 +337,7 @@
     }
   }
 
-  async function skipProfile() {
+  window.skipProfile = async function() {
     const { data: { user } } = await supabase.auth.getUser()
     if (user && selectedRole) {
       await supabase
@@ -358,11 +363,6 @@
     btn.disabled = loading
     btn.classList.toggle('loading', loading)
   }
-
-  window.addEventListener('load', async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { window.location.href = 'login.html' }
-  })
 </script>
 </body>
 </html>

@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Lucrex — Postează</title>
   <meta name="theme-color" content="#1a5fb4" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -35,11 +34,7 @@
     .post-btn { background: var(--blue); color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
     .post-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .type-tabs { display: flex; background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 16px; }
-    .type-tab {
-      flex: 1; padding: 13px 8px; text-align: center;
-      font-size: 14px; font-weight: 500; color: var(--text-muted);
-      cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.15s;
-    }
+    .type-tab { flex: 1; padding: 13px 8px; text-align: center; font-size: 14px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2.5px solid transparent; transition: all 0.15s; }
     .type-tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
     .content { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
     .user-row { display: flex; align-items: center; gap: 10px; background: var(--bg-card); padding: 14px 16px; border-radius: var(--radius); }
@@ -51,11 +46,7 @@
     .field { padding: 0 16px; border-bottom: 1px solid var(--border); }
     .field:last-child { border-bottom: none; }
     .field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-hint); padding-top: 12px; text-transform: uppercase; letter-spacing: 0.4px; }
-    .field input, .field textarea, .field select {
-      width: 100%; border: none; background: transparent;
-      font-size: 15px; color: var(--text); padding: 8px 0 14px;
-      outline: none; font-family: inherit; resize: none; -webkit-appearance: none;
-    }
+    .field input, .field textarea, .field select { width: 100%; border: none; background: transparent; font-size: 15px; color: var(--text); padding: 8px 0 14px; outline: none; font-family: inherit; resize: none; -webkit-appearance: none; }
     .field input::placeholder, .field textarea::placeholder { color: var(--text-hint); }
     .budget-row { display: flex; gap: 0; }
     .budget-row .field { flex: 1; }
@@ -87,11 +78,10 @@
 </head>
 <body>
 <div class="app">
-
   <header class="header">
     <button class="close-btn" onclick="window.location.href='feed.html'">✕</button>
     <span class="header-title" id="headerTitle">Postează</span>
-    <button class="post-btn" id="postBtn" onclick="submitPost()" disabled>Trimite</button>
+    <button class="post-btn" id="postBtn" disabled>Trimite</button>
   </header>
 
   <div class="type-tabs">
@@ -101,7 +91,6 @@
   </div>
 
   <div class="content">
-
     <div class="user-row">
       <div class="avatar" id="userAvatar">👤</div>
       <div class="user-info">
@@ -160,7 +149,7 @@
       <div class="form-card">
         <div class="field">
           <label>Descrie lucrarea</label>
-          <textarea id="workBody" placeholder="ex: Am montat o centrală nouă în Tomis Nord. Rezultatul a ieșit super!" rows="4" maxlength="500" oninput="checkReady()"></textarea>
+          <textarea id="workBody" placeholder="ex: Am montat o centrală nouă în Tomis Nord." rows="4" maxlength="500" oninput="checkReady()"></textarea>
         </div>
       </div>
       <div class="media-wrap" style="margin-top:14px">
@@ -183,16 +172,17 @@
         </div>
       </div>
     </div>
-
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
   const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
-  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
-  const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnY'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   let currentUser = null
   let currentType = 'job'
@@ -200,27 +190,27 @@
   let isUrgent = false
   let uploadedUrls = []
 
-  window.addEventListener('load', async () => {
-    const { data: { session } } = await sbClient.auth.getSession()
-    if (!session) { window.location.href = 'login.html'; return; }
-    currentUser = session.user
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { window.location.href = 'login.html' }
+  currentUser = session.user
 
-    const { data: profile } = await sbClient
-      .from('users')
-      .select('full_name, city, neighborhood')
-      .eq('id', currentUser.id)
-      .single()
+  const { data: profile } = await supabase
+    .from('users')
+    .select('full_name, city, neighborhood')
+    .eq('id', currentUser.id)
+    .single()
 
-    if (profile) {
-      const name = profile.full_name || 'Tu'
-      document.getElementById('userName').textContent = name
-      document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase()
-      const zone = [profile.neighborhood, profile.city].filter(Boolean).join(', ')
-      document.getElementById('userZone').textContent = zone ? `📍 ${zone}` : '📍 —'
-    }
-  })
+  if (profile) {
+    const name = profile.full_name || 'Tu'
+    document.getElementById('userName').textContent = name
+    document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase()
+    const zone = [profile.neighborhood, profile.city].filter(Boolean).join(', ')
+    document.getElementById('userZone').textContent = zone ? `📍 ${zone}` : '📍 —'
+  }
 
-  function switchType(tab) {
+  document.getElementById('postBtn').addEventListener('click', submitPost)
+
+  window.switchType = function(tab) {
     document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('active'))
     tab.classList.add('active')
     currentType = tab.dataset.type
@@ -231,34 +221,30 @@
     checkReady()
   }
 
-  function selectCat(pill) {
+  window.selectCat = function(pill) {
     document.querySelectorAll('#jobCatPills .pill-opt').forEach(p => p.classList.remove('selected'))
     pill.classList.add('selected')
     selectedCat = pill.dataset.cat
     checkReady()
   }
 
-  function toggleUrgency() {
+  window.toggleUrgency = function() {
     isUrgent = !isUrgent
     document.getElementById('urgencyToggle').classList.toggle('on', isUrgent)
   }
 
-  function checkReady() {
+  window.checkReady = function() {
     let ready = false
-    if (currentType === 'job') {
-      ready = document.getElementById('jobTitle').value.trim().length > 2 && !!selectedCat
-    } else if (currentType === 'work') {
-      ready = document.getElementById('workBody').value.trim().length > 5
-    } else if (currentType === 'question') {
-      ready = document.getElementById('questionBody').value.trim().length > 5
-    }
+    if (currentType === 'job') ready = document.getElementById('jobTitle').value.trim().length > 2 && !!selectedCat
+    else if (currentType === 'work') ready = document.getElementById('workBody').value.trim().length > 5
+    else if (currentType === 'question') ready = document.getElementById('questionBody').value.trim().length > 5
     document.getElementById('postBtn').disabled = !ready
   }
 
-  function handleFiles(files) {
+  window.handleFiles = function(files) {
     Array.from(files).forEach(file => {
       const reader = new FileReader()
-      reader.onload = (e) => addThumb(e.target.result, file)
+      reader.onload = (e) => addThumb(e.target.result)
       reader.readAsDataURL(file)
     })
   }
@@ -267,26 +253,18 @@
     const grid = document.getElementById('mediaGrid')
     const item = document.createElement('div')
     item.className = 'media-item'
-    item.innerHTML = `
-      <img src="${src}" class="media-thumb" />
-      <button class="media-remove" onclick="removeThumb(this)">✕</button>
-    `
+    item.innerHTML = `<img src="${src}" class="media-thumb" /><button class="media-remove" onclick="this.closest('.media-item').remove()">✕</button>`
     grid.insertBefore(item, grid.firstChild)
     uploadedUrls.push(src)
   }
 
-  function removeThumb(btn) {
-    btn.closest('.media-item').remove()
-  }
-
   async function submitPost() {
     const btn = document.getElementById('postBtn')
-    btn.disabled = true
-    btn.textContent = '...'
+    btn.disabled = true; btn.textContent = '...'
 
     try {
       if (currentType === 'job') {
-        const { error } = await sbClient.from('job_requests').insert({
+        const { error } = await supabase.from('job_requests').insert({
           client_id: currentUser.id,
           title: document.getElementById('jobTitle').value.trim(),
           description: document.getElementById('jobDesc').value.trim() || null,
@@ -300,7 +278,7 @@
       } else {
         const typeMap = { work: 'work_done', question: 'question' }
         const bodyId = currentType === 'work' ? 'workBody' : 'questionBody'
-        const { error } = await sbClient.from('feed_posts').insert({
+        const { error } = await supabase.from('feed_posts').insert({
           author_id: currentUser.id,
           type: typeMap[currentType],
           body: document.getElementById(bodyId).value.trim(),
@@ -308,22 +286,18 @@
         })
         if (error) throw error
       }
-
       showToast('✅ Postare trimisă!')
       setTimeout(() => window.location.href = 'feed.html', 1500)
-
     } catch (err) {
       console.error(err)
-      btn.disabled = false
-      btn.textContent = 'Trimite'
+      btn.disabled = false; btn.textContent = 'Trimite'
       showToast('❌ Eroare. Încearcă din nou.')
     }
   }
 
   function showToast(msg) {
     const t = document.getElementById('toast')
-    t.textContent = msg
-    t.classList.add('visible')
+    t.textContent = msg; t.classList.add('visible')
     setTimeout(() => t.classList.remove('visible'), 2500)
   }
 </script>
