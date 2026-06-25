@@ -162,7 +162,7 @@
   const jobId = new URLSearchParams(window.location.search).get('job')
 
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { window.location.href = 'login.html' }
+  if (!session) { window.location.href = 'login.html'; return }
   currentUser = session.user
 
   if (!jobId) { history.back() }

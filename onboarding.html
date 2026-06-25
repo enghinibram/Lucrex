@@ -240,7 +240,7 @@
 
   // Verifică sesiunea la load
   const { data: { session } } = await supabase.auth.getSession()
-  if (!session) { window.location.href = 'login.html' }
+  if (!session) { window.location.href = 'login.html'; return }
 
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'))
