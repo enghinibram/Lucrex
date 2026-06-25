@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
   <title>Lucrex — Intră în cont</title>
   <meta name="theme-color" content="#1a5fb4" />
-  <link rel="manifest" href="/manifest.json" />
+  <link rel="manifest" href="/Lucrex/manifest.json" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -172,7 +172,7 @@
     emailInput.focus()
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {})
+      navigator.serviceWorker.register('/Lucrex/sw.js').catch(() => {})
     }
   </script>
 </body>
