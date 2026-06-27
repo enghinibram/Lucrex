@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Mesaje</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #f0f2f5; --bg-card: #fff; --bg-input: #f4f4f4;
+      --border: #e4e4e4; --radius: 14px;
+      --header-h: 56px; --navbar-h: 60px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #999; --text-hint: #555;
+        --bg: #0a0a0a; --bg-card: #1a1a1a; --bg-input: #222;
+        --border: #2a2a2a; --blue-light: #0c2a52;
+      }
+    }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      overscroll-behavior: none;
+    }
+    .app { max-width: 480px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; position: relative; }
+    .header {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--header-h);
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 100;
+    }
+    .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
+    .header-title { font-size: 16px; font-weight: 600; }
+    .back-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: none;
+      background: var(--bg-input); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .scroll-area {
+      margin-top: var(--header-h); margin-bottom: var(--navbar-h);
+      overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1;
+    }
+
+    /* ── LISTA CONVERSAȚII ── */
+    .conv-list { display: flex; flex-direction: column; }
+    .conv-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; background: var(--bg-card);
+      border-bottom: 1px solid var(--border); cursor: pointer;
+      -webkit-tap-highlight-color: transparent; transition: background 0.1s;
+    }
+    .conv-item:active { background: var(--bg-input); }
+    .conv-avatar {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--bg-input); display: flex; align-items: center;
+      justify-content: center; font-size: 22px; flex-shrink: 0; position: relative;
+    }
+    .unread-dot {
+      position: absolute; top: 2px; right: 2px;
+      width: 10px; height: 10px; background: var(--blue);
+      border-radius: 50%; border: 2px solid var(--bg-card);
+    }
+    .conv-body { flex: 1; min-width: 0; }
+    .conv-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+    .conv-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .conv-time { font-size: 12px; color: var(--text-hint); }
+    .conv-preview { font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .conv-preview.unread { font-weight: 600; color: var(--text); }
+
+    /* ── CHAT ── */
+    .chat-view { display: none; flex-direction: column; height: 100%; }
+    .chat-view.open { display: flex; }
+    .chat-header {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--header-h);
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 10px; padding: 0 14px; z-index: 100;
+    }
+    .chat-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg-input); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .chat-info { flex: 1; min-width: 0; }
+    .chat-name { font-size: 15px; font-weight: 700; }
+    .chat-sub { font-size: 12px; color: var(--text-hint); }
+    .chat-messages {
+      margin-top: var(--header-h); margin-bottom: 72px;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+      padding: 12px 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .msg-bubble {
+      max-width: 75%; padding: 10px 13px; border-radius: 18px;
+      font-size: 14px; line-height: 1.5; word-break: break-word;
+    }
+    .msg-bubble.mine {
+      background: var(--blue); color: #fff;
+      align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .msg-bubble.theirs {
+      background: var(--bg-card); color: var(--text);
+      align-self: flex-start; border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .msg-time { font-size: 10px; margin-top: 3px; opacity: 0.65; }
+    .msg-wrap { display: flex; flex-direction: column; }
+    .msg-wrap.mine { align-items: flex-end; }
+    .msg-wrap.theirs { align-items: flex-start; }
+    .chat-input-bar {
+      position: fixed; bottom: var(--navbar-h); left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      padding: 10px 12px; background: var(--bg-card); border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 8px; z-index: 100;
+    }
+    .chat-input {
+      flex: 1; background: var(--bg-input); border: 1.5px solid transparent;
+      border-radius: 22px; padding: 10px 16px; font-size: 14px; color: var(--text);
+      font-family: inherit; outline: none; resize: none; max-height: 120px; line-height: 1.4;
+    }
+    .chat-input:focus { border-color: var(--blue); }
+    .chat-input::placeholder { color: var(--text-hint); }
+    .send-btn {
+      width: 42px; height: 42px; border-radius: 50%; background: var(--blue);
+      border: none; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; font-size: 18px; flex-shrink: 0;
+      transition: background 0.15s; -webkit-tap-highlight-color: transparent;
+    }
+    .send-btn:active { background: var(--blue-dark); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 52px; margin-bottom: 14px; }
+    .empty-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+    .empty-sub { font-size: 14px; line-height: 1.6; }
+    .skeleton { background: linear-gradient(90deg, var(--bg-input) 25%, var(--border) 50%, var(--bg-input) 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .sk-conv { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+    .sk-circle { width: 48px; height: 48px; border-radius: 50%; flex-shrink: 0; }
+    .sk-lines { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .sk-line { height: 12px; border-radius: 6px; }
+
+    .navbar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--navbar-h);
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around; z-index: 100;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 16px; cursor: pointer; border: none; background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-icon { font-size: 22px; line-height: 1; }
+    .nav-label { font-size: 10px; color: var(--text-hint); font-weight: 500; }
+    .nav-item.active .nav-label { color: var(--blue); }
+    .nav-post {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--blue); color: #fff; border: none;
+      font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(26,95,180,0.4); line-height: 1;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER LISTA -->
+  <header class="header" id="listHeader">
+    <span class="logo">Lucrex</span>
+    <span class="header-title">Mesaje</span>
+    <div style="width:38px"></div>
+  </header>
+
+  <!-- HEADER CHAT -->
+  <div class="chat-header" id="chatHeader" style="display:none">
+    <button class="back-btn" onclick="closeChat()">←</button>
+    <div class="chat-avatar" id="chatAvatar">👤</div>
+    <div class="chat-info">
+      <div class="chat-name" id="chatName"></div>
+      <div class="chat-sub" id="chatSub"></div>
+    </div>
+  </div>
+
+  <!-- LISTA CONVERSAȚII -->
+  <div class="scroll-area" id="listView">
+    <div class="conv-list" id="convList">
+      <!-- skeleton -->
+      ${[1,2,3].map(() => `
+      <div class="sk-conv">
+        <div class="sk-circle skeleton"></div>
+        <div class="sk-lines">
+          <div class="sk-line skeleton" style="width:60%"></div>
+          <div class="sk-line skeleton" style="width:85%"></div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>
+
+  <!-- CHAT VIEW -->
+  <div class="chat-view" id="chatView">
+    <div class="chat-messages" id="chatMessages"></div>
+    <div class="chat-input-bar">
+      <textarea class="chat-input" id="msgInput" placeholder="Scrie un mesaj..." rows="1"
+        oninput="autoResize(this)" onkeydown="onKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <button class="nav-item" onclick="window.location.href='feed.html'">
+      <span class="nav-icon">🏠</span><span class="nav-label">Feed</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='map.html'">
+      <span class="nav-icon">🗺️</span><span class="nav-label">Hartă</span>
+    </button>
+    <button class="nav-post" onclick="window.location.href='post.html'" title="Postează">＋</button>
+    <button class="nav-item active">
+      <span class="nav-icon">💬</span><span class="nav-label">Mesaje</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='profile.html'">
+      <span class="nav-icon">👤</span><span class="nav-label">Profil</span>
+    </button>
+  </nav>
+</div>
+
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { window.location.href = 'login.html' }
+
+  const me = session?.user
+  let activePeer = null
+  let realtimeSub = null
+
+  function timeLabel(ts) {
+    const d = new Date(ts), now = new Date()
+    const diff = now - d
+    if (diff < 60000) return 'acum'
+    if (diff < 3600000) return `${Math.floor(diff/60000)}m`
+    if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('ro', { hour:'2-digit', minute:'2-digit' })
+    return d.toLocaleDateString('ro', { day:'numeric', month:'short' })
+  }
+
+  async function loadConversations() {
+    const { data, error } = await supabase
+      .from('messages')
+      .select(`id, body, created_at, is_read, sender_id, receiver_id,
+        sender:users!messages_sender_id_fkey(id, full_name),
+        receiver:users!messages_receiver_id_fkey(id, full_name)`)
+      .or(`sender_id.eq.${me.id},receiver_id.eq.${me.id}`)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      document.getElementById('convList').innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">⚠️</div>
+          <div class="empty-title">Tabelul de mesaje lipsește</div>
+          <div class="empty-sub">Rulează SQL-ul din README în Supabase Dashboard pentru a activa mesajele.</div>
+        </div>`
+      return
+    }
+
+    // Grupează după perechea de utilizatori
+    const seen = new Map()
+    ;(data || []).forEach(msg => {
+      const peer = msg.sender_id === me.id ? msg.receiver : msg.sender
+      if (!peer) return
+      if (!seen.has(peer.id)) seen.set(peer.id, { peer, lastMsg: msg, unread: 0 })
+      if (!msg.is_read && msg.receiver_id === me.id) seen.get(peer.id).unread++
+    })
+
+    const convList = document.getElementById('convList')
+    if (seen.size === 0) {
+      convList.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">💬</div>
+          <div class="empty-title">Niciun mesaj încă</div>
+          <div class="empty-sub">Conversațiile tale vor apărea aici când cineva îți scrie sau tu trimiți primul mesaj.</div>
+        </div>`
+      return
+    }
+
+    convList.innerHTML = [...seen.values()].map(({ peer, lastMsg, unread }) => `
+      <div class="conv-item" onclick="openChat('${peer.id}','${escHtml(peer.full_name || 'Utilizator')}')">
+        <div class="conv-avatar">
+          👤${unread > 0 ? '<div class="unread-dot"></div>' : ''}
+        </div>
+        <div class="conv-body">
+          <div class="conv-top">
+            <span class="conv-name">${escHtml(peer.full_name || 'Utilizator')}</span>
+            <span class="conv-time">${timeLabel(lastMsg.created_at)}</span>
+          </div>
+          <div class="conv-preview${unread > 0 ? ' unread' : ''}">
+            ${lastMsg.sender_id === me.id ? 'Tu: ' : ''}${escHtml(lastMsg.body)}
+          </div>
+        </div>
+      </div>`).join('')
+  }
+
+  window.openChat = async function(peerId, peerName) {
+    activePeer = { id: peerId, name: peerName }
+
+    document.getElementById('listHeader').style.display = 'none'
+    document.getElementById('listView').style.display = 'none'
+    document.getElementById('chatHeader').style.display = 'flex'
+    document.getElementById('chatView').classList.add('open')
+    document.getElementById('chatName').textContent = peerName
+    document.getElementById('chatSub').textContent = 'meseriaș local'
+    document.getElementById('chatMessages').innerHTML = ''
+
+    await loadMessages(peerId)
+    await markRead(peerId)
+
+    // realtime
+    if (realtimeSub) supabase.removeChannel(realtimeSub)
+    realtimeSub = supabase.channel('chat-' + peerId)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'messages',
+        filter: `sender_id=eq.${peerId}`
+      }, payload => appendMessage(payload.new))
+      .subscribe()
+  }
+
+  window.closeChat = function() {
+    activePeer = null
+    if (realtimeSub) { supabase.removeChannel(realtimeSub); realtimeSub = null }
+
+    document.getElementById('chatHeader').style.display = 'none'
+    document.getElementById('chatView').classList.remove('open')
+    document.getElementById('listHeader').style.display = 'flex'
+    document.getElementById('listView').style.display = 'block'
+    loadConversations()
+  }
+
+  async function loadMessages(peerId) {
+    const { data } = await supabase
+      .from('messages')
+      .select('*')
+      .or(`and(sender_id.eq.${me.id},receiver_id.eq.${peerId}),and(sender_id.eq.${peerId},receiver_id.eq.${me.id})`)
+      .order('created_at', { ascending: true })
+
+    const container = document.getElementById('chatMessages')
+    container.innerHTML = ''
+    ;(data || []).forEach(msg => appendMessage(msg, false))
+    container.scrollTop = container.scrollHeight
+  }
+
+  function appendMessage(msg, scroll = true) {
+    const mine = msg.sender_id === me.id
+    const div = document.createElement('div')
+    div.className = `msg-wrap ${mine ? 'mine' : 'theirs'}`
+    div.innerHTML = `
+      <div class="msg-bubble ${mine ? 'mine' : 'theirs'}">${escHtml(msg.body)}</div>
+      <div class="msg-time">${timeLabel(msg.created_at)}</div>`
+    document.getElementById('chatMessages').appendChild(div)
+    if (scroll) document.getElementById('chatMessages').scrollTop = 9999
+  }
+
+  async function markRead(peerId) {
+    await supabase.from('messages')
+      .update({ is_read: true })
+      .eq('sender_id', peerId)
+      .eq('receiver_id', me.id)
+      .eq('is_read', false)
+  }
+
+  window.sendMessage = async function() {
+    const input = document.getElementById('msgInput')
+    const body = input.value.trim()
+    if (!body || !activePeer) return
+
+    input.value = ''
+    input.style.height = ''
+    document.getElementById('sendBtn').disabled = true
+
+    const { data, error } = await supabase.from('messages').insert({
+      sender_id: me.id,
+      receiver_id: activePeer.id,
+      body
+    }).select().single()
+
+    document.getElementById('sendBtn').disabled = false
+    if (!error && data) appendMessage(data)
+  }
+
+  window.onKey = function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
+  }
+
+  window.autoResize = function(el) {
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+  }
+
+  function escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+
+  loadConversations()
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/Lucrex/sw.js').catch(() => {})
+  }
+</script>
+</body>
+</html>

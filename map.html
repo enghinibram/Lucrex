@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Lucrex — Hartă</title>
+  <meta name="theme-color" content="#1a5fb4" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1a5fb4; --blue-light: #eef3fc; --blue-dark: #154c91;
+      --red: #df2e38; --red-light: #fdf0ef; --green: #27ae60;
+      --text: #111; --text-muted: #666; --text-hint: #aaa;
+      --bg: #f0f2f5; --bg-card: #fff; --bg-input: #f4f4f4;
+      --border: #e4e4e4; --radius: 14px;
+      --header-h: 56px; --navbar-h: 60px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #f0f0f0; --text-muted: #999; --text-hint: #555;
+        --bg: #0a0a0a; --bg-card: #1a1a1a; --bg-input: #222;
+        --border: #2a2a2a; --blue-light: #0c2a52; --red-light: #2a0a0c;
+      }
+    }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      overscroll-behavior: none;
+    }
+    .app { max-width: 480px; margin: 0 auto; height: 100vh; display: flex; flex-direction: column; position: relative; }
+    .header {
+      position: fixed; top: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--header-h);
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 16px; z-index: 1000;
+    }
+    .logo { font-size: 22px; font-weight: 700; color: var(--blue); letter-spacing: -0.5px; }
+    .header-title { font-size: 16px; font-weight: 600; color: var(--text); }
+    .filter-wrap {
+      position: fixed; top: var(--header-h); left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      display: flex; gap: 8px; padding: 10px 16px;
+      background: var(--bg-card); border-bottom: 1px solid var(--border);
+      z-index: 999; overflow-x: auto; scrollbar-width: none;
+    }
+    .filter-wrap::-webkit-scrollbar { display: none; }
+    .filter-pill {
+      white-space: nowrap; padding: 6px 14px; border-radius: 20px;
+      border: 1.5px solid var(--border); font-size: 13px; font-weight: 500;
+      color: var(--text-muted); cursor: pointer; background: var(--bg-card);
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .filter-pill.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .filter-pill.sos.active { background: var(--red); border-color: var(--red); color: #fff; }
+    #map {
+      position: fixed;
+      top: calc(var(--header-h) + 44px);
+      bottom: var(--navbar-h);
+      left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      z-index: 1;
+    }
+    .locate-btn {
+      position: fixed;
+      bottom: calc(var(--navbar-h) + 16px);
+      right: 50%; transform: translateX(calc(50% + 8px));
+      width: 44px; height: 44px; border-radius: 50%;
+      background: var(--bg-card); border: 1.5px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 20px; z-index: 500;
+    }
+    .navbar {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px; height: var(--navbar-h);
+      background: var(--bg-card); border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-around; z-index: 1000;
+    }
+    .nav-item {
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      padding: 8px 16px; cursor: pointer; border: none; background: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .nav-icon { font-size: 22px; line-height: 1; }
+    .nav-label { font-size: 10px; color: var(--text-hint); font-weight: 500; }
+    .nav-item.active .nav-label { color: var(--blue); }
+    .nav-post {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--blue); color: #fff; border: none;
+      font-size: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(26,95,180,0.4); line-height: 1;
+    }
+    /* Leaflet popup custom */
+    .leaflet-popup-content-wrapper {
+      border-radius: 12px !important;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15) !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+    }
+    .leaflet-popup-content { margin: 12px 14px !important; }
+    .popup-title { font-size: 14px; font-weight: 700; color: #111; margin-bottom: 4px; }
+    .popup-sub { font-size: 12px; color: #666; margin-bottom: 8px; }
+    .popup-badge {
+      display: inline-block; font-size: 11px; padding: 2px 8px;
+      border-radius: 8px; font-weight: 600; margin-bottom: 8px;
+    }
+    .popup-badge.job { background: #fef9ec; color: #d68910; }
+    .popup-badge.sos { background: #fdf0ef; color: #df2e38; }
+    .popup-btn {
+      display: block; width: 100%; padding: 8px; background: #1a5fb4; color: #fff;
+      border: none; border-radius: 8px; font-size: 13px; font-weight: 600;
+      cursor: pointer; text-align: center; margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <span class="logo">Lucrex</span>
+    <span class="header-title">Hartă</span>
+    <div style="width:38px"></div>
+  </header>
+
+  <div class="filter-wrap">
+    <button class="filter-pill active" data-filter="all" onclick="setFilter(this,'all')">🗺️ Toate</button>
+    <button class="filter-pill" data-filter="jobs" onclick="setFilter(this,'jobs')">💼 Lucrări</button>
+    <button class="filter-pill sos" data-filter="sos" onclick="setFilter(this,'sos')">🆘 Urgențe</button>
+  </div>
+
+  <div id="map"></div>
+
+  <button class="locate-btn" onclick="locateMe()" title="Localizează-mă">📍</button>
+
+  <nav class="navbar">
+    <button class="nav-item" onclick="window.location.href='feed.html'">
+      <span class="nav-icon">🏠</span><span class="nav-label">Feed</span>
+    </button>
+    <button class="nav-item active">
+      <span class="nav-icon">🗺️</span><span class="nav-label">Hartă</span>
+    </button>
+    <button class="nav-post" onclick="window.location.href='post.html'" title="Postează">＋</button>
+    <button class="nav-item" onclick="window.location.href='messages.html'">
+      <span class="nav-icon">💬</span><span class="nav-label">Mesaje</span>
+    </button>
+    <button class="nav-item" onclick="window.location.href='profile.html'">
+      <span class="nav-icon">👤</span><span class="nav-label">Profil</span>
+    </button>
+  </nav>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+  import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+  const SUPABASE_URL = 'https://prhoavmgfqhzyhvpxkos.supabase.co'
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaG9hdm1nZnFoenlodnB4a29zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNTQ3NTIsImV4cCI6MjA5MzkzMDc1Mn0._mVw4FGttNsDLvxlGONlcw292_ZU1c8PcVCNzQ6TSnU'
+  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) { window.location.href = 'login.html' }
+
+  const map = L.map('map', { zoomControl: false }).setView([44.4268, 26.1025], 12)
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(map)
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map)
+
+  const jobIcon = L.divIcon({
+    html: '<div style="background:#1a5fb4;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(26,95,180,0.4);border:2px solid #fff">💼</div>',
+    className: '', iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
+  })
+
+  const sosIcon = L.divIcon({
+    html: '<div style="background:#df2e38;color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(223,46,56,0.4);border:2px solid #fff">🆘</div>',
+    className: '', iconSize: [36, 36], iconAnchor: [18, 18], popupAnchor: [0, -20]
+  })
+
+  let jobMarkers = [], sosMarkers = []
+  let activeFilter = 'all'
+
+  async function loadMarkers() {
+    const [{ data: jobs }, { data: sos }] = await Promise.all([
+      supabase.from('job_requests').select('id,title,category,neighborhood,budget_min,budget_max,lat,lng,status').eq('status','open').not('lat','is',null),
+      supabase.from('sos_alerts').select('id,category,description,neighborhood,lat,lng,status').eq('status','active').not('lat','is',null)
+    ])
+
+    jobMarkers.forEach(m => m.remove())
+    sosMarkers.forEach(m => m.remove())
+    jobMarkers = []
+    sosMarkers = []
+
+    ;(jobs || []).forEach(job => {
+      const budget = job.budget_min ? `${job.budget_min}–${job.budget_max || '?'} RON` : 'Buget nedefinit'
+      const m = L.marker([job.lat, job.lng], { icon: jobIcon })
+        .bindPopup(`
+          <span class="popup-badge job">💼 Lucrare</span>
+          <div class="popup-title">${job.title}</div>
+          <div class="popup-sub">${job.category} · ${job.neighborhood || ''} · ${budget}</div>
+          <button class="popup-btn" onclick="window.location.href='bid.html?job=${job.id}'">Trimite ofertă</button>
+        `)
+      jobMarkers.push(m)
+      if (activeFilter !== 'sos') m.addTo(map)
+    })
+
+    ;(sos || []).forEach(alert => {
+      const m = L.marker([alert.lat, alert.lng], { icon: sosIcon })
+        .bindPopup(`
+          <span class="popup-badge sos">🆘 Urgență</span>
+          <div class="popup-title">${alert.category}</div>
+          <div class="popup-sub">${alert.neighborhood || ''}</div>
+          ${alert.description ? `<div class="popup-sub">${alert.description}</div>` : ''}
+        `)
+      sosMarkers.push(m)
+      if (activeFilter !== 'jobs') m.addTo(map)
+    })
+
+    if (jobMarkers.length === 0 && sosMarkers.length === 0) return
+
+    const allMarkers = [...jobMarkers, ...sosMarkers]
+    const group = L.featureGroup(allMarkers)
+    map.fitBounds(group.getBounds().pad(0.2))
+  }
+
+  window.setFilter = function(btn, filter) {
+    document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'))
+    btn.classList.add('active')
+    activeFilter = filter
+
+    jobMarkers.forEach(m => { filter === 'sos' ? m.remove() : m.addTo(map) })
+    sosMarkers.forEach(m => { filter === 'jobs' ? m.remove() : m.addTo(map) })
+  }
+
+  window.locateMe = function() {
+    map.locate({ setView: true, maxZoom: 15 })
+  }
+
+  map.on('locationfound', e => {
+    L.circleMarker(e.latlng, {
+      radius: 10, color: '#1a5fb4', fillColor: '#1a5fb4',
+      fillOpacity: 0.9, weight: 2
+    }).addTo(map).bindPopup('Locația ta').openPopup()
+  })
+
+  loadMarkers()
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/Lucrex/sw.js').catch(() => {})
+  }
+</script>
+</body>
+</html>
