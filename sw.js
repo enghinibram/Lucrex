@@ -1,14 +1,14 @@
-const CACHE_NAME = 'lucrex-v3';
+const CACHE_NAME = 'lucrex-v4';
 const urlsToCache = [
-  '/',
-  '/login.html',
-  '/otp.html',
-  '/onboarding.html',
-  '/feed.html',
-  '/post.html',
-  '/bid.html',
-  '/profile.html',
-  '/manifest.json'
+  '/Lucrex/',
+  '/Lucrex/login.html',
+  '/Lucrex/otp.html',
+  '/Lucrex/onboarding.html',
+  '/Lucrex/feed.html',
+  '/Lucrex/post.html',
+  '/Lucrex/bid.html',
+  '/Lucrex/profile.html',
+  '/Lucrex/manifest.json'
 ];
 
 self.addEventListener('install', event => {
